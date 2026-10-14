@@ -1674,7 +1674,7 @@
             ? characterCardTwoImages[card.rank % characterCardTwoImages.length]
             : character;
         const mark = characterMarksEnabled
-            ? `<img class="suit-large" src="${selectedCharacter.src}" alt="${selectedCharacter.name}">`
+            ? `<img class="suit-large" src="${selectedCharacter.src.normalize('NFD')}" alt="${selectedCharacter.name}">`
             : `<span class="suit-large suit-symbol">${card.suit.char}</span>`;
         cardDiv.innerHTML = `
             <div class="card-corner top-left">${card.rankStr}<span>${card.suit.char}</span></div>
