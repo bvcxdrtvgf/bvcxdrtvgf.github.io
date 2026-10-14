@@ -1,0 +1,2069 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ブラウザで遊べるソリティア (Klondike)</title>
+    <style>
+        body {
+            background-color: #288808;
+            color: white;
+            font-family: 'Helvetica Neue', Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            user-select: none;
+            overflow-x: hidden;
+        }
+        header {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        h1 {
+            margin: 0 0 10px 0;
+            font-size: 24px;
+        }
+        button {
+            background-color: #1b5e20;
+            color: white;
+            border: 2px solid white;
+            padding: 8px 16px;
+            font-size: 14px;
+            cursor: pointer;
+            border-radius: 4px;
+            font-weight: bold;
+        }
+        button:hover {
+            background-color: #ffffff;
+            color: #1b5e20;
+        }
+        .help-button {
+            position: fixed;
+            top: 12px;
+            left: 12px;
+            z-index: 5;
+            width: 30px;
+            height: 30px;
+            padding: 0;
+            border: 1px solid rgba(255,255,255,0.9);
+            border-radius: 50%;
+            font-family: Georgia, serif;
+            font-size: 17px;
+            font-style: italic;
+            line-height: 1;
+        }
+        .help-dialog {
+            width: min(440px, calc(100% - 48px));
+            max-height: calc(100% - 48px);
+            padding: 20px;
+            border: 2px solid #f1e5c7;
+            border-radius: 8px;
+            background: #fffdf5;
+            color: #20251d;
+            box-shadow: 0 8px 28px rgba(0,0,0,0.35);
+        }
+        .help-dialog::backdrop {
+            background: rgba(0,0,0,0.55);
+        }
+        .help-dialog h2 {
+            margin: 0 0 12px;
+            color: #1b5e20;
+            font-size: 20px;
+        }
+        .help-dialog ul {
+            margin: 0 0 18px;
+            padding-left: 22px;
+            line-height: 1.7;
+        }
+        .help-dialog li + li {
+            margin-top: 6px;
+        }
+        .achievement-dialog {
+            width: min(560px, calc(100% - 48px));
+            max-height: calc(100% - 48px);
+            padding: 20px;
+            border: 2px solid #f1e5c7;
+            border-radius: 8px;
+            background: #fffdf5;
+            color: #20251d;
+            box-shadow: 0 8px 28px rgba(0,0,0,0.35);
+        }
+        .achievement-dialog::backdrop {
+            background: rgba(0,0,0,0.55);
+        }
+        .achievement-dialog h2 {
+            margin: 0 0 12px;
+            color: #1b5e20;
+            font-size: 20px;
+        }
+        .achievement-list {
+            display: grid;
+            gap: 8px;
+            max-height: min(60vh, 520px);
+            margin: 0 0 18px;
+            padding: 0;
+            overflow-y: auto;
+            list-style: none;
+        }
+        .achievement-item {
+            padding: 10px 12px;
+            border: 1px solid #b7c4ae;
+            border-radius: 4px;
+            background: #f4f7ef;
+        }
+        .achievement-item.unlocked {
+            border-color: #6d8f45;
+            background: #e8f1dc;
+        }
+        .achievement-item strong,
+        .achievement-item span {
+            display: block;
+        }
+        .achievement-item span {
+            margin-top: 4px;
+            font-size: 13px;
+            line-height: 1.45;
+        }
+        .achievement-dialog form {
+            text-align: right;
+        }
+        .leaderboard-list {
+            display: grid;
+            gap: 4px;
+            max-height: min(28vh, 240px);
+            margin: 0 0 16px;
+            padding: 0 0 0 28px;
+            overflow-y: auto;
+        }
+        .leaderboard-list li {
+            padding: 6px 8px;
+            border-bottom: 1px solid #d6decf;
+            line-height: 1.4;
+        }
+        .leaderboard-dialog h3 {
+            margin: 14px 0 6px;
+            color: #1b5e20;
+            font-size: 16px;
+        }
+        .leaderboard-summary {
+            margin: 0 0 10px;
+            font-size: 14px;
+        }
+        .help-dialog form {
+            text-align: right;
+        }
+        .game-controls {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        .difficulty-select {
+            background-color: white;
+            color: #1b5e20;
+            border: 2px solid #1b5e20;
+            border-radius: 4px;
+            padding: 8px 10px;
+            font-size: 14px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        .bet-input {
+            width: 70px;
+            padding: 8px;
+            border: 2px solid #1b5e20;
+            border-radius: 4px;
+            font-size: 14px;
+            font-weight: bold;
+        }
+        .game-stats {
+            display: flex;
+            justify-content: center;
+            gap: 18px;
+            margin-top: 12px;
+            font-size: 16px;
+            font-weight: bold;
+        }
+        .game-status {
+            min-height: 22px;
+            margin-top: 8px;
+            color: #fff3cd;
+            font-weight: bold;
+        }
+        .shop-toggle-button {
+            margin-top: 10px;
+        }
+        #audio-toggle {
+            margin-top: 10px;
+        }
+        .admin-access {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 8px;
+            flex-wrap: wrap;
+            margin-top: 10px;
+        }
+        .admin-panel {
+            max-width: 900px;
+            margin: 12px auto;
+            padding: 12px;
+            border: 2px solid rgba(255,255,255,0.7);
+            border-radius: 8px;
+            text-align: center;
+        }
+        .admin-panel[hidden] {
+            display: none;
+        }
+        .admin-controls {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        .shop {
+            max-width: 900px;
+            margin: 0 auto 20px;
+            padding: 12px;
+            border: 2px solid rgba(255,255,255,0.7);
+            border-radius: 8px;
+            text-align: center;
+            display: none;
+        }
+        .shop.open {
+            display: block;
+        }
+        .match-results {
+            max-width: 900px;
+            margin: 0 auto 20px;
+            padding: 12px;
+            border: 2px solid rgba(255,255,255,0.7);
+            border-radius: 8px;
+            text-align: center;
+        }
+        .match-results[hidden] {
+            display: none;
+        }
+        .match-results ol {
+            display: inline-block;
+            margin: 0;
+            padding-left: 28px;
+            text-align: left;
+        }
+        .shop h2 {
+            margin: 0 0 10px;
+            font-size: 18px;
+        }
+        .shop-items {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        .shop button:disabled {
+            background-color: rgba(0,0,0,0.35);
+            color: rgba(255,255,255,0.65);
+            border-color: rgba(255,255,255,0.45);
+            cursor: not-allowed;
+        }
+        .character-mark-button.active {
+            background-color: #ffffff;
+            color: #1b5e20;
+        }
+        #game-container {
+            max-width: 900px;
+            margin: 0 auto;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+        .top-row {
+            display: flex;
+            justify-content: space-between;
+        }
+        .stock-waste-container, .foundation-container {
+            display: flex;
+            gap: 15px;
+        }
+        .tableau-container {
+            display: flex;
+            justify-content: space-between;
+            gap: 15px;
+            min-height: 400px;
+        }
+        .pile {
+            width: 90px;
+            height: 130px;
+            border: 2px dashed rgba(255,255,255,0.4);
+            border-radius: 8px;
+            position: relative;
+            background-color: rgba(0,0,0,0.1);
+        }
+        .pile.active-pile {
+            border-color: rgba(255,255,255,0.8);
+        }
+        .card {
+            width: 90px;
+            height: 130px;
+            border-radius: 8px;
+            position: absolute;
+            box-shadow: 2px 2px 5px rgba(0,0,0,0.3);
+            background-color: white;
+            color: black;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            padding: 8px;
+            box-sizing: border-box;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 18px;
+        }
+        .card-reveal {
+            animation: card-reveal 240ms ease-out both;
+            backface-visibility: hidden;
+        }
+        .card-move-in {
+            animation: card-move-in 180ms ease-out both;
+        }
+        .card-victory {
+            animation: card-victory 620ms ease-in-out both;
+            animation-delay: var(--victory-delay, 0ms);
+        }
+        @keyframes card-reveal {
+            from { opacity: 0.35; transform: perspective(600px) rotateY(75deg) scale(0.96); }
+            to { opacity: 1; transform: perspective(600px) rotateY(0) scale(1); }
+        }
+        @keyframes card-move-in {
+            from { opacity: 0.65; transform: translateY(-12px) scale(0.96); }
+            to { opacity: 1; transform: translateY(0) scale(1); }
+        }
+        @keyframes card-victory {
+            0%, 100% { transform: translateY(0) rotate(0); }
+            35% { transform: translateY(-14px) rotate(-3deg); }
+            70% { transform: translateY(2px) rotate(2deg); }
+        }
+        @media (prefers-reduced-motion: reduce) {
+            .card-reveal,
+            .card-move-in,
+            .card-victory {
+                animation: none !important;
+            }
+        }
+        .card.back {
+            background: linear-gradient(135deg, #b71c1c 25%, #7f0000 25%, #7f0000 50%, #b71c1c 50%, #b71c1c 75%, #7f0000 75%, #7f0000 100%);
+            background-size: 10px 10px;
+            border: 2px solid white;
+        }
+        .card.back * {
+            display: none;
+        }
+        .card.back .back-mark {
+            display: block;
+            position: absolute;
+            color: #000000;
+            font-family: Georgia, serif;
+            font-size: 17px;
+            line-height: 1;
+            text-shadow: 0 1px 1px #7f0000;
+        }
+        .card.back .back-mark.top-left {
+            top: 6px;
+            left: 7px;
+        }
+        .card.back .back-mark.top-right {
+            top: 6px;
+            right: 7px;
+        }
+        .card.back .back-mark.bottom-left {
+            bottom: 6px;
+            left: 7px;
+        }
+        .card.back .back-mark.bottom-right {
+            bottom: 6px;
+            right: 7px;
+        }
+        .card.red {
+            color: #d32f2f;
+        }
+        .card.black {
+            color: #060606;
+        }
+        .card .suit-large {
+            align-self: center;
+            width: 46px;
+            height: 76px;
+            object-fit: contain;
+            object-position: center;
+            margin: auto;
+        }
+        .card .suit-symbol {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 36px;
+            line-height: 1;
+        }
+        .card .card-corner {
+            position: absolute;
+            z-index: 2;
+            display: flex;
+            flex-direction: column;
+            font-size: 13px;
+            line-height: 1;
+            white-space: nowrap;
+        }
+        .card .card-corner.top-left {
+            top: 5px;
+            left: 6px;
+        }
+        .card .card-corner.bottom-right {
+            right: 6px;
+            bottom: 5px;
+            transform: rotate(180deg);
+        }
+        .tableau-pile {
+            height: auto;
+            min-height: 130px;
+        }
+    </style>
+</head>
+<body>
+
+<button class="help-button" type="button" onclick="document.getElementById('help-dialog').showModal()" aria-label="ソリティアの操作説明" title="操作説明">i</button>
+<dialog id="help-dialog" class="help-dialog" aria-labelledby="help-title">
+    <h2 id="help-title">ソリティアの遊び方</h2>
+    <ul>
+        <li>場札は赤と黒を交互に、数字が1つ小さいカードを重ねます。空いた列にはJ・Q・Kを置けます。</li>
+        <li>AからKまで、同じマークのカードを回収場所へ順番に重ねます。</li>
+        <li>山札をクリックすると、選択中の難易度に応じてカードをめくります。山札が空なら捨て札を戻せます。</li>
+        <li>カードをドラッグして移動します。「一手戻す」で直前のカード操作を1回取り消せます。</li>
+        <li>表向きのカードをダブルクリックすると、移動できる場合は回収場所へ移動します。</li>
+        <li>賭ける勝利数を設定すると、勝利時に簡単1.5倍・普通2倍・難しい2.5倍で精算します。</li>
+        <li>2P・4P対戦では同じ端末を交代で使い、同じ難易度でのクリア時間を競います。</li>
+        <li>難易度やショップ機能は勝利数に応じて解放されます。詰みになるとカードが自動でシャッフルされます。</li>
+        <li>1日1局は同じ日付に1回だけ挑戦できます。ノーミスは不正な移動をすると失敗し、Undoも使えません。</li>
+        <li>連鎖連勝は連続クリアごとに報酬が1ずつ増えます。時間制限は5分以内にクリアしてください。</li>
+    </ul>
+    <form method="dialog">
+        <button type="submit">閉じる</button>
+    </form>
+</dialog>
+<dialog id="pause-dialog" class="help-dialog" aria-labelledby="pause-title">
+    <h2 id="pause-title">一時停止中</h2>
+    <p id="pause-message">ゲームを一時停止しました。続きから再開できます。</p>
+    <form method="dialog">
+        <button id="pause-resume-button" type="button" onclick="resumeGame()">ウイ</button>
+        <button id="pause-new-game-button" type="button" onclick="startNewGameFromPause()">いいえ、証拠だけ</button>
+    </form>
+</dialog>
+<dialog id="achievement-dialog" class="achievement-dialog" aria-labelledby="achievement-title">
+    <h2 id="achievement-title">実績</h2>
+    <ul id="achievement-list" class="achievement-list"></ul>
+    <form method="dialog">
+        <button type="submit">閉じる</button>
+    </form>
+</dialog>
+<dialog id="leaderboard-dialog" class="achievement-dialog leaderboard-dialog" aria-labelledby="leaderboard-title">
+    <h2 id="leaderboard-title">個人ランキング</h2>
+    <p id="leaderboard-summary" class="leaderboard-summary"></p>
+    <h3>獲得勝利数</h3>
+    <ol id="victory-leaderboard" class="leaderboard-list"></ol>
+    <h3>クリア速度</h3>
+    <ol id="speed-leaderboard" class="leaderboard-list"></ol>
+    <h3>直近5回のクリア速度</h3>
+    <ol id="recent-speed-leaderboard" class="leaderboard-list"></ol>
+    <form method="dialog">
+        <button type="submit">閉じる</button>
+    </form>
+</dialog>
+
+<header>
+    <h1>ソリティア (クロンダイク)</h1>
+    <div class="game-controls">
+        <label for="difficulty">難易度</label>
+        <select id="difficulty" class="difficulty-select" onchange="initGame()">
+            <option id="easy-option" value="easy">簡単（1枚めくり）</option>
+            <option id="normal-option" value="normal" disabled>普通（3勝利で解放・2枚めくり）</option>
+            <option id="hard-option" value="hard" disabled>難しい（5勝利で解放・3枚めくり）</option>
+            <option id="new-mode-option" value="new" disabled>ナイトメア（4枚めくり）</option>
+        </select>
+        <label for="game-mode">ゲームモード</label>
+        <select id="game-mode" class="difficulty-select" onchange="initGame()">
+            <option value="classic">通常</option>
+            <option value="daily">1日1局</option>
+            <option value="no-mistake">ノーミス</option>
+            <option value="streak">連鎖連勝</option>
+            <option value="timed">時間制限（5分）</option>
+        </select>
+        <label for="bet-amount">賭ける勝利数</label>
+        <input id="bet-amount" class="bet-input" type="number" min="0" step="1" value="0" aria-label="賭ける勝利数">
+        <button id="undo-button" onclick="undoMove()" disabled>一手戻す</button>
+        <button id="pause-button" onclick="pauseGame()">一時停止</button>
+        <button id="reset-button" onclick="resetGame()">ゲームをリセット</button>
+        <label for="match-player-count">対戦人数</label>
+        <select id="match-player-count" class="difficulty-select">
+            <option value="2">2P</option>
+            <option value="4">4P</option>
+        </select>
+        <button id="match-button" onclick="handleLocalMatchButton()">対戦開始</button>
+        <button id="match-exit-button" onclick="endLocalMatch()" hidden>対戦終了</button>
+    </div>
+    <div class="admin-access">
+        <label for="admin-code">管理コード</label>
+        <input id="admin-code" class="bet-input" type="password" maxlength="32" autocomplete="off" aria-label="管理コード">
+        <button id="admin-unlock-button" type="button" onclick="unlockAdminMode()">管理モード</button>
+    </div>
+    <div class="game-stats">
+        <span>時間: <span id="timer">00:00</span></span>
+        <span>勝利回数: <span id="victory-count">0</span></span>
+        <span>クリア回数: <span id="total-wins">0</span></span>
+        <span id="mode-progress"></span>
+    </div>
+    <div id="game-status" class="game-status" aria-live="polite"></div>
+    <section id="match-results" class="match-results" aria-live="polite" hidden></section>
+    <button id="achievement-button" class="shop-toggle-button" type="button" onclick="openAchievements()">実績を確認</button>
+    <button id="leaderboard-button" class="shop-toggle-button" type="button" onclick="openLeaderboard()">ランキング</button>
+    <button id="shop-toggle-button" class="shop-toggle-button" onclick="toggleShop()" aria-expanded="false">ショップを表示</button>
+    <button id="audio-toggle" class="shop-toggle-button" type="button" onclick="toggleSound()">効果音: ON</button>
+</header>
+
+<section id="admin-panel" class="admin-panel" aria-labelledby="admin-panel-title" hidden>
+    <h2 id="admin-panel-title">管理者モード</h2>
+    <div class="admin-controls">
+        <label for="admin-victories">勝利数の追加</label>
+        <input id="admin-victories" class="bet-input" type="number" min="0" step="1" value="0">
+        <label for="admin-clears">クリア数の追加</label>
+        <input id="admin-clears" class="bet-input" type="number" min="0" step="1" value="0">
+        <button type="button" onclick="applyAdminCountAdditions()">数を追加</button>
+        <label for="admin-counters-fixed">勝利・クリア回数を固定</label>
+        <input id="admin-counters-fixed" type="checkbox" onchange="setAdminCountersFixed()">
+        <label for="admin-time-speed">時間速度</label>
+        <select id="admin-time-speed" class="difficulty-select" onchange="setAdminTimeSpeed()">
+            <option value="1">1倍</option>
+            <option value="2">2倍</option>
+            <option value="5">5倍</option>
+            <option value="10">10倍</option>
+        </select>
+        <button type="button" onclick="resetAdminCounters()">勝利数・クリア数をリセット</button>
+        <button type="button" onclick="restoreCheckpoint()">チェックポイントを復元</button>
+        <button type="button" onclick="lockAdminMode()">管理モードを終了</button>
+    </div>
+</section>
+
+<section id="shop" class="shop">
+    <h2>ショップ</h2>
+    <div class="shop-items">
+        <button id="shuffle-button" onclick="shuffleCurrentCards()">3勝利でカードをシャッフル</button>
+        <button id="new-mode-button" onclick="unlockNewMode()">10勝利で新モードを解放</button>
+        <button id="character-mark-button" class="character-mark-button" onclick="toggleCharacterMarks()">15勝利でキャラマークを解放</button>
+        <button id="character-card-two-button" class="character-mark-button" onclick="toggleCharacterCardTwo()">15勝利でキャラカード2を解放</button>
+    </div>
+</section>
+
+<div id="game-container">
+    <!-- 上部：山札・場札の回収場所 -->
+    <div class="top-row">
+        <div class="stock-waste-container">
+            <div id="stock" class="pile" onclick="drawCard()"></div>
+            <div id="waste" class="pile"></div>
+        </div>
+        <div class="foundation-container">
+            <div id="f0" class="pile foundation" data-suit="H"></div>
+            <div id="f1" class="pile foundation" data-suit="D"></div>
+            <div id="f2" class="pile foundation" data-suit="C"></div>
+            <div id="f3" class="pile foundation" data-suit="S"></div>
+        </div>
+    </div>
+
+    <!-- 下部：場札 (7列) -->
+    <div class="tableau-container">
+        <div id="t0" class="pile tableau-pile"></div>
+        <div id="t1" class="pile tableau-pile"></div>
+        <div id="t2" class="pile tableau-pile"></div>
+        <div id="t3" class="pile tableau-pile"></div>
+        <div id="t4" class="pile tableau-pile"></div>
+        <div id="t5" class="pile tableau-pile"></div>
+        <div id="t6" class="pile tableau-pile"></div>
+    </div>
+</div>
+
+<script>
+    const suits = [
+        { name: 'H', char: '♥', color: 'red' },
+        { name: 'D', char: '♦', color: 'red' },
+        { name: 'C', char: '♣', color: 'black' },
+        { name: 'S', char: '♠', color: 'black' }
+    ];
+    const ranks = ['A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K'];
+
+    let deck = [];
+    let gameState = {
+        stock: [],
+        waste: [],
+        foundation: [[], [], [], []],
+        tableau: [[], [], [], [], [], [], []]
+    };
+
+    let draggedCards = [];
+    let dragSource = null;
+    let drawCount = 2;
+    let elapsedSeconds = 0;
+    let timerInterval = null;
+    let idleHintTimeout = null;
+    let gameWon = false;
+    let isPaused = false;
+    const gameSaveKey = 'solitaire-saved-game';
+    const timedModeLimitSeconds = 300;
+    let victoryCount = Number(localStorage.getItem('solitaire-victory-count')) || 0;
+    let totalWins = Number(localStorage.getItem('solitaire-total-wins')) || 0;
+    let unlockedAchievements = new Set(JSON.parse(localStorage.getItem('solitaire-achievements') || '[]'));
+    let dailyResetProgress = JSON.parse(localStorage.getItem('solitaire-daily-resets') || '{}');
+    let characterCardSet = Number(localStorage.getItem('solitaire-character-card-set')) || (localStorage.getItem('solitaire-character-marks') === 'true' ? 1 : 0);
+    let characterMarksEnabled = characterCardSet !== 0;
+    let currentBet = 0;
+    let currentDifficulty = 'easy';
+    let currentGameMode = localStorage.getItem('solitaire-current-game-mode') || 'classic';
+    let modeFailed = false;
+    let streakWins = Number(localStorage.getItem('solitaire-streak-wins')) || 0;
+    const maxUndoHistory = 100;
+    let undoHistory = [];
+    let localMatch = null;
+    let soundEnabled = localStorage.getItem('solitaire-sound-enabled') !== 'false';
+    let audioContext = null;
+    let adminModeEnabled = false;
+    let adminCountersFixed = localStorage.getItem('solitaire-counters-fixed') === 'true';
+    let adminTimeSpeed = 1;
+    const adminAccessCode = '스피키 누르지 마세요';
+
+    const achievementDefinitions = [
+        { id: 'first-victory', title: 'First victory!', condition: '初めて勝利すると獲得', qualifies: () => totalWins >= 1 },
+        { id: 'beginner', title: 'beginner Solitaire player', condition: '10回勝利し、簡単をクリアすると獲得', qualifies: () => totalWins >= 10 && hasCleared('easy') },
+        { id: 'intermediate', title: 'Intermediate Solitaire player', condition: '50回勝利し、簡単・普通をクリアすると獲得', qualifies: () => totalWins >= 50 && hasCleared('easy') && hasCleared('normal') },
+        { id: 'advanced', title: 'Advanced Solitaire player', condition: '100回勝利し、簡単・普通・難しいをクリアすると獲得', qualifies: () => totalWins >= 100 && hasCleared('easy') && hasCleared('normal') && hasCleared('hard') },
+        { id: 'expert', title: 'Solitaire Expert', condition: '500回勝利し、簡単・普通・難しいをクリアすると獲得', qualifies: () => totalWins >= 500 && hasCleared('easy') && hasCleared('normal') && hasCleared('hard') },
+        { id: 'god', title: 'God of Solitaire', condition: '1000回勝利し、簡単・普通・難しい・ナイトメアをクリアすると獲得', qualifies: () => totalWins >= 1000 && hasCleared('easy') && hasCleared('normal') && hasCleared('hard') && hasCleared('new') },
+        { id: 'quick-victory', title: 'Quick Victory', condition: '5分以内にクリアすると獲得', qualifies: () => elapsedSeconds <= 300 },
+        { id: 'daily-reset', title: '？？？', condition: '1日に100回リセットすると獲得' },
+        { id: 'shogi', title: '将棋', condition: '1時間以上プレイしてからクリアすると獲得', qualifies: () => elapsedSeconds >= 3600 },
+        { id: 'gambler', title: 'ギャンブラー', condition: '賭けを使い、1回の勝利で100以上を獲得すると獲得', qualifies: () => currentBet > 0 && currentBet * (currentDifficulty === 'easy' ? 1.5 : currentDifficulty === 'hard' ? 2.5 : 2) >= 100 }
+    ];
+
+    let personalRecords = loadPersonalRecords();
+
+    function loadPersonalRecords() {
+        try {
+            const savedRecords = JSON.parse(localStorage.getItem('solitaire-personal-leaderboard') || '{}');
+            const victories = Array.isArray(savedRecords.victories) ? savedRecords.victories : [];
+            const speeds = Array.isArray(savedRecords.speeds) ? savedRecords.speeds : [];
+            const recentSpeedRecords = Array.isArray(savedRecords.recentSpeeds)
+                ? savedRecords.recentSpeeds.slice(0, 5)
+                : [...new Map([...victories, ...speeds]
+                    .filter(record => record && record.date)
+                    .map(record => [record.date, record])).values()]
+                    .sort((first, second) => Date.parse(second.date) - Date.parse(first.date))
+                    .slice(0, 5);
+            return {
+                victories,
+                speeds,
+                recentSpeeds: recentSpeedRecords
+            };
+        } catch {
+            return { victories: [], speeds: [], recentSpeeds: [] };
+        }
+    }
+
+    function saveRecentSpeedRecord() {
+        personalRecords.recentSpeeds.unshift({
+            elapsedSeconds,
+            difficulty: currentDifficulty,
+            gameMode: currentGameMode,
+            date: new Date().toISOString()
+        });
+        personalRecords.recentSpeeds = personalRecords.recentSpeeds.slice(0, 5);
+        localStorage.setItem('solitaire-personal-leaderboard', JSON.stringify(personalRecords));
+        if (document.getElementById('leaderboard-dialog').open) renderLeaderboard();
+    }
+
+    function savePersonalRecord(payout) {
+        const record = {
+            payout,
+            elapsedSeconds,
+            difficulty: currentDifficulty,
+            gameMode: currentGameMode,
+            date: new Date().toISOString()
+        };
+        personalRecords.victories.push(record);
+        personalRecords.victories.sort((first, second) => second.payout - first.payout || first.elapsedSeconds - second.elapsedSeconds);
+        personalRecords.victories = personalRecords.victories.slice(0, 10);
+        personalRecords.speeds.push(record);
+        personalRecords.speeds.sort((first, second) => first.elapsedSeconds - second.elapsedSeconds || second.payout - first.payout);
+        personalRecords.speeds = personalRecords.speeds.slice(0, 10);
+        localStorage.setItem('solitaire-personal-leaderboard', JSON.stringify(personalRecords));
+        if (document.getElementById('leaderboard-dialog').open) renderLeaderboard();
+    }
+
+    function renderLeaderboard() {
+        const difficultyLabels = { easy: '簡単', normal: '普通', hard: '難しい', new: 'ナイトメア' };
+        const modeLabels = { classic: '通常', daily: '1日1局', 'no-mistake': 'ノーミス', streak: '連鎖連勝', timed: '時間制限' };
+        const formatRecord = (record, index, category) => {
+            const date = new Date(record.date);
+            const dateLabel = Number.isNaN(date.getTime()) ? '' : date.toLocaleDateString('ja-JP');
+            const difficulty = difficultyLabels[record.difficulty] || '通常';
+            const mode = modeLabels[record.gameMode] || '通常';
+            const score = category === 'victories'
+                ? `${record.payout}勝利`
+                : formatTime(Math.max(0, Number(record.elapsedSeconds) || 0));
+            return `#${index + 1} ${score} / ${difficulty}・${mode} / ${dateLabel}`;
+        };
+        const victoryList = document.getElementById('victory-leaderboard');
+        const speedList = document.getElementById('speed-leaderboard');
+        const recentSpeedList = document.getElementById('recent-speed-leaderboard');
+        victoryList.replaceChildren();
+        speedList.replaceChildren();
+        recentSpeedList.replaceChildren();
+        document.getElementById('leaderboard-summary').textContent = `通算クリア数: ${totalWins}回（このブラウザーの個人記録）`;
+        for (const [records, list, category] of [
+            [personalRecords.victories, victoryList, 'victories'],
+            [personalRecords.speeds, speedList, 'speeds'],
+            [personalRecords.recentSpeeds, recentSpeedList, 'recentSpeeds']
+        ]) {
+            if (records.length === 0) {
+                const emptyRow = document.createElement('li');
+                emptyRow.textContent = '記録はまだありません';
+                list.append(emptyRow);
+                continue;
+            }
+            records.forEach((record, index) => {
+                const row = document.createElement('li');
+                row.textContent = formatRecord(record, index, category);
+                list.append(row);
+            });
+        }
+    }
+
+    function openLeaderboard() {
+        renderLeaderboard();
+        document.getElementById('leaderboard-dialog').showModal();
+    }
+
+    function hasCleared(difficulty) {
+        const clearedDifficulties = JSON.parse(localStorage.getItem('solitaire-cleared-difficulties') || '[]');
+        return clearedDifficulties.includes(difficulty);
+    }
+
+    function saveAchievements() {
+        localStorage.setItem('solitaire-achievements', JSON.stringify([...unlockedAchievements]));
+    }
+
+    function unlockEligibleAchievements() {
+        const newlyUnlocked = [];
+        achievementDefinitions.forEach(achievement => {
+            if (!unlockedAchievements.has(achievement.id) && achievement.qualifies && achievement.qualifies()) {
+                unlockedAchievements.add(achievement.id);
+                newlyUnlocked.push(achievement.title);
+            }
+        });
+        if (newlyUnlocked.length > 0) saveAchievements();
+        return newlyUnlocked;
+    }
+
+    function renderAchievements() {
+        const list = document.getElementById('achievement-list');
+        list.replaceChildren();
+        achievementDefinitions.forEach(achievement => {
+            const item = document.createElement('li');
+            item.className = `achievement-item${unlockedAchievements.has(achievement.id) ? ' unlocked' : ''}`;
+            const title = document.createElement('strong');
+            title.textContent = `${unlockedAchievements.has(achievement.id) ? '獲得済み' : '未獲得'}: ${achievement.title}`;
+            const condition = document.createElement('span');
+            const resetCount = dailyResetProgress.date === getLocalDateKey() ? dailyResetProgress.count : 0;
+            condition.textContent = achievement.id === 'daily-reset'
+                ? `${achievement.condition}（今日: ${resetCount}/100）`
+                : achievement.condition;
+            item.append(title, condition);
+            list.append(item);
+        });
+        const button = document.getElementById('achievement-button');
+        button.textContent = `実績 ${unlockedAchievements.size}/${achievementDefinitions.length}`;
+    }
+
+    function openAchievements() {
+        renderAchievements();
+        document.getElementById('achievement-dialog').showModal();
+    }
+
+    function getLocalDateKey() {
+        const now = new Date();
+        return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+    }
+
+    function grantDailyLoginBonus() {
+        const today = getLocalDateKey();
+        if (adminCountersFixed || localStorage.getItem('solitaire-daily-bonus-date') === today) return false;
+        victoryCount += 5;
+        localStorage.setItem('solitaire-daily-bonus-date', today);
+        localStorage.setItem('solitaire-victory-count', victoryCount);
+        return true;
+    }
+
+    function ensureAudioContext() {
+        if (!soundEnabled) return null;
+        const AudioCtor = window.AudioContext || window.webkitAudioContext;
+        if (!AudioCtor) {
+            soundEnabled = false;
+            return null;
+        }
+        if (!audioContext) {
+            audioContext = new AudioCtor();
+        }
+        if (audioContext.state === 'suspended') {
+            audioContext.resume();
+        }
+        return audioContext;
+    }
+
+    function playTone(frequency, duration = 0.08, volume = 0.05, type = 'sine', detune = 0) {
+        const context = ensureAudioContext();
+        if (!context) return;
+
+        const oscillator = context.createOscillator();
+        const gainNode = context.createGain();
+        oscillator.type = type;
+        oscillator.frequency.setValueAtTime(frequency, context.currentTime);
+        oscillator.detune.setValueAtTime(detune, context.currentTime);
+
+        gainNode.gain.setValueAtTime(0.0001, context.currentTime);
+        gainNode.gain.exponentialRampToValueAtTime(volume, context.currentTime + 0.01);
+        gainNode.gain.exponentialRampToValueAtTime(0.0001, context.currentTime + duration);
+
+        oscillator.connect(gainNode);
+        gainNode.connect(context.destination);
+        oscillator.start();
+        oscillator.stop(context.currentTime + duration + 0.04);
+    }
+
+    function playSound(effect) {
+        if (!soundEnabled) return;
+
+        switch (effect) {
+            case 'draw':
+                playTone(540, 0.08, 0.04, 'triangle');
+                setTimeout(() => playTone(700, 0.07, 0.03, 'square'), 30);
+                break;
+            case 'move':
+                playTone(360, 0.06, 0.035, 'sine', 20);
+                break;
+            case 'win':
+                playTone(440, 0.12, 0.05, 'triangle');
+                setTimeout(() => playTone(660, 0.12, 0.05, 'triangle'), 100);
+                setTimeout(() => playTone(880, 0.18, 0.05, 'triangle'), 200);
+                break;
+            case 'fail':
+                playTone(180, 0.18, 0.04, 'sawtooth');
+                setTimeout(() => playTone(120, 0.22, 0.04, 'sawtooth'), 120);
+                break;
+            case 'shuffle':
+                playTone(250, 0.06, 0.03, 'square');
+                setTimeout(() => playTone(200, 0.06, 0.03, 'square'), 70);
+                break;
+            case 'undo':
+                playTone(420, 0.06, 0.025, 'triangle');
+                setTimeout(() => playTone(300, 0.06, 0.025, 'triangle'), 50);
+                break;
+            case 'reset':
+                playTone(280, 0.08, 0.03, 'square');
+                break;
+            default:
+                break;
+        }
+    }
+
+    function toggleSound() {
+        soundEnabled = !soundEnabled;
+        localStorage.setItem('solitaire-sound-enabled', String(soundEnabled));
+        const button = document.getElementById('audio-toggle');
+        if (button) button.textContent = `効果音: ${soundEnabled ? 'ON' : 'OFF'}`;
+        if (soundEnabled) {
+            ensureAudioContext();
+        } else if (audioContext && audioContext.state === 'running') {
+            audioContext.suspend();
+        }
+    }
+
+    function unlockAdminMode() {
+        const codeInput = document.getElementById('admin-code');
+        if (codeInput.value.trim().toUpperCase() !== adminAccessCode) {
+            codeInput.value = '';
+            codeInput.setCustomValidity('管理コードが違います。');
+            codeInput.reportValidity();
+            codeInput.setCustomValidity('');
+            return;
+        }
+        adminModeEnabled = true;
+        codeInput.value = '';
+        document.getElementById('admin-counters-fixed').checked = adminCountersFixed;
+        document.getElementById('admin-panel').hidden = false;
+        document.getElementById('game-status').textContent = '管理者モードを有効にしました。';
+    }
+
+    function lockAdminMode() {
+        adminModeEnabled = false;
+        adminTimeSpeed = 1;
+        document.getElementById('admin-time-speed').value = '1';
+        document.getElementById('admin-panel').hidden = true;
+        document.getElementById('game-status').textContent = adminCountersFixed
+            ? '管理者モードを終了しました。勝利数・クリア数の固定は継続中です。'
+            : '管理者モードを終了しました。';
+    }
+
+    function setAdminTimeSpeed() {
+        if (!adminModeEnabled) return;
+        adminTimeSpeed = Number(document.getElementById('admin-time-speed').value);
+        if (![1, 2, 5, 10].includes(adminTimeSpeed)) {
+            adminTimeSpeed = 1;
+            document.getElementById('admin-time-speed').value = '1';
+        }
+        document.getElementById('game-status').textContent = `ゲーム時間を${adminTimeSpeed}倍速にしました。`;
+    }
+
+    function setAdminCountersFixed() {
+        if (!adminModeEnabled) return;
+        adminCountersFixed = document.getElementById('admin-counters-fixed').checked;
+        localStorage.setItem('solitaire-counters-fixed', String(adminCountersFixed));
+        if (adminCountersFixed) {
+            currentBet = 0;
+            document.getElementById('bet-amount').value = '0';
+        }
+        updateStats();
+        saveCurrentGame();
+        document.getElementById('game-status').textContent = adminCountersFixed
+            ? '勝利数・クリア数を固定しました。ゲーム中の増減は停止します。'
+            : '勝利数・クリア数の固定を解除しました。';
+    }
+
+    function applyAdminCountAdditions() {
+        if (!adminModeEnabled) return;
+        const victoryAddition = Number(document.getElementById('admin-victories').value);
+        const clearAddition = Number(document.getElementById('admin-clears').value);
+        if (!Number.isSafeInteger(victoryAddition) || victoryAddition < 0
+            || !Number.isSafeInteger(clearAddition) || clearAddition < 0
+            || !Number.isSafeInteger(victoryCount + victoryAddition)
+            || !Number.isSafeInteger(totalWins + clearAddition)) {
+            document.getElementById('game-status').textContent = '追加数は0以上の安全な整数で入力してください。';
+            return;
+        }
+        victoryCount += victoryAddition;
+        totalWins += clearAddition;
+        localStorage.setItem('solitaire-victory-count', String(victoryCount));
+        localStorage.setItem('solitaire-total-wins', String(totalWins));
+        document.getElementById('admin-victories').value = '0';
+        document.getElementById('admin-clears').value = '0';
+        clearUndoHistory();
+        updateStats();
+        saveCurrentGame();
+        document.getElementById('game-status').textContent = `勝利数を${victoryAddition}、クリア数を${clearAddition}追加しました。`;
+    }
+
+    function resetAdminCounters() {
+        if (!adminModeEnabled) return;
+        if (!confirm('勝利数とクリア数を0に戻します。実績やランキングは変更されません。よろしいですか？')) return;
+        victoryCount = 0;
+        totalWins = 0;
+        localStorage.setItem('solitaire-victory-count', '0');
+        localStorage.setItem('solitaire-total-wins', '0');
+        clearUndoHistory();
+        updateStats();
+        saveCurrentGame();
+        document.getElementById('game-status').textContent = '勝利数とクリア数をリセットしました。';
+    }
+
+    function restoreCheckpoint() {
+        if (!adminModeEnabled) return;
+        const savedGame = getSavedGame();
+        if (!savedGame || !restoreSavedGame(savedGame)) {
+            document.getElementById('game-status').textContent = '復元できるチェックポイントがありません。';
+            return;
+        }
+        document.getElementById('pause-message').textContent = 'チェックポイントを復元しました。続きから再開できます。';
+        const pauseDialog = document.getElementById('pause-dialog');
+        if (!pauseDialog.open) pauseDialog.showModal();
+        document.getElementById('game-status').textContent = 'チェックポイントを復元しました。';
+    }
+
+    function resetGame() {
+        const today = getLocalDateKey();
+        if (dailyResetProgress.date !== today) dailyResetProgress = { date: today, count: 0 };
+        dailyResetProgress.count++;
+        localStorage.setItem('solitaire-daily-resets', JSON.stringify(dailyResetProgress));
+        const earnedDailyReset = dailyResetProgress.count >= 100 && !unlockedAchievements.has('daily-reset');
+        if (earnedDailyReset) {
+            unlockedAchievements.add('daily-reset');
+            saveAchievements();
+        }
+        playSound('reset');
+        initGame();
+        if (earnedDailyReset) document.getElementById('game-status').textContent = '実績「？？？」を獲得しました！';
+    }
+
+    function formatTime(seconds) {
+        const minutes = Math.floor(seconds / 60).toString().padStart(2, '0');
+        const remainingSeconds = (seconds % 60).toString().padStart(2, '0');
+        return `${minutes}:${remainingSeconds}`;
+    }
+
+    function getIdleHint() {
+        const cardLabel = card => `${card.rankStr}${card.suit.char}`;
+        const wasteCard = gameState.waste[gameState.waste.length - 1];
+        if (wasteCard) {
+            const foundationIndex = suits.findIndex(suit => suit.name === wasteCard.suit.name);
+            if (canMoveToFoundation(wasteCard, gameState.foundation[foundationIndex])) {
+                return `ヒント: 捨て札の${cardLabel(wasteCard)}を回収場所へ移動できます。`;
+            }
+            for (let targetIndex = 0; targetIndex < gameState.tableau.length; targetIndex++) {
+                if (canMoveToTableau(wasteCard, gameState.tableau[targetIndex])) {
+                    return `ヒント: 捨て札の${cardLabel(wasteCard)}を${targetIndex + 1}列目へ移動できます。`;
+                }
+            }
+        }
+
+        for (let sourceIndex = 0; sourceIndex < gameState.tableau.length; sourceIndex++) {
+            const sourcePile = gameState.tableau[sourceIndex];
+            for (let cardIndex = sourcePile.length - 1; cardIndex >= 0; cardIndex--) {
+                const card = sourcePile[cardIndex];
+                if (!card.faceUp) continue;
+                const foundationIndex = suits.findIndex(suit => suit.name === card.suit.name);
+                if (cardIndex === sourcePile.length - 1 && canMoveToFoundation(card, gameState.foundation[foundationIndex])) {
+                    return `ヒント: ${sourceIndex + 1}列目の${cardLabel(card)}を回収場所へ移動できます。`;
+                }
+                for (let targetIndex = 0; targetIndex < gameState.tableau.length; targetIndex++) {
+                    if (sourceIndex !== targetIndex && canMoveToTableau(card, gameState.tableau[targetIndex])) {
+                        return `ヒント: ${sourceIndex + 1}列目の${cardLabel(card)}を${targetIndex + 1}列目へ移動できます。`;
+                    }
+                }
+            }
+        }
+
+        if (gameState.stock.length > 0) return 'ヒント: 山札をクリックして次のカードをめくりましょう。';
+        if (gameState.waste.length > 0) return 'ヒント: 山札が空です。山札の場所をクリックして捨て札を戻しましょう。';
+        return 'ヒント: 今すぐ動かせるカードがありません。盤面を確認してください。';
+    }
+
+    function resetIdleHintTimer() {
+        clearTimeout(idleHintTimeout);
+        if (gameWon || isPaused || modeFailed) return;
+        idleHintTimeout = setTimeout(() => {
+            if (gameWon || isPaused || modeFailed) return;
+            document.getElementById('game-status').textContent = getIdleHint();
+            resetIdleHintTimer();
+        }, 60000);
+    }
+
+    function serializeCards(cards) {
+        return cards.map(card => ({ suit: card.suit.name, rank: card.rank, faceUp: card.faceUp }));
+    }
+
+    function saveCurrentGame() {
+        if (gameWon && (!localMatch || localMatch.finished)) {
+            localStorage.removeItem(gameSaveKey);
+            return;
+        }
+        const savedGame = {
+            version: 1,
+            stock: serializeCards(gameState.stock),
+            waste: serializeCards(gameState.waste),
+            foundation: gameState.foundation.map(serializeCards),
+            tableau: gameState.tableau.map(serializeCards),
+            elapsedSeconds,
+            currentDifficulty,
+            currentGameMode,
+            drawCount,
+            currentBet,
+            victoryCount,
+            gameWon,
+            modeFailed,
+            streakWins,
+            dailyDate: currentGameMode === 'daily' ? localStorage.getItem('solitaire-daily-mode-date') : null,
+            localMatch
+        };
+        localStorage.setItem(gameSaveKey, JSON.stringify(savedGame));
+    }
+
+    function getSavedGame() {
+        try {
+            const savedGame = JSON.parse(localStorage.getItem(gameSaveKey) || 'null');
+            if (!savedGame || savedGame.version !== 1 || !Array.isArray(savedGame.stock)
+                || !Array.isArray(savedGame.waste) || !Array.isArray(savedGame.foundation)
+                || !Array.isArray(savedGame.tableau) || savedGame.foundation.length !== 4
+                || savedGame.tableau.length !== 7) return null;
+            return savedGame;
+        } catch {
+            localStorage.removeItem(gameSaveKey);
+            return null;
+        }
+    }
+
+    function restoreSavedGame(savedGame) {
+        try {
+            const restoreCards = cards => cards.map(savedCard => {
+                const suit = suits.find(item => item.name === savedCard.suit);
+                if (!suit || !Number.isInteger(savedCard.rank) || savedCard.rank < 0 || savedCard.rank >= ranks.length) {
+                    throw new Error('保存データのカードが不正です');
+                }
+                return { suit, rank: savedCard.rank, rankStr: ranks[savedCard.rank], faceUp: Boolean(savedCard.faceUp) };
+            });
+            gameState.stock = restoreCards(savedGame.stock);
+            gameState.waste = restoreCards(savedGame.waste);
+            gameState.foundation = savedGame.foundation.map(restoreCards);
+            gameState.tableau = savedGame.tableau.map(restoreCards);
+            elapsedSeconds = Math.max(0, Number(savedGame.elapsedSeconds) || 0);
+            currentDifficulty = savedGame.currentDifficulty || 'easy';
+            currentGameMode = savedGame.currentGameMode || 'classic';
+            drawCount = Number(savedGame.drawCount) || 1;
+            currentBet = adminCountersFixed ? 0 : Math.max(0, Number(savedGame.currentBet) || 0);
+            if (!adminCountersFixed) victoryCount = Math.max(0, Number(savedGame.victoryCount) || 0);
+            gameWon = Boolean(savedGame.gameWon);
+            modeFailed = Boolean(savedGame.modeFailed);
+            streakWins = Math.max(0, Number(savedGame.streakWins) || 0);
+            localMatch = savedGame.localMatch || null;
+            clearUndoHistory();
+            isPaused = true;
+            document.getElementById('difficulty').value = currentDifficulty;
+            document.getElementById('game-mode').value = currentGameMode;
+            document.getElementById('bet-amount').value = currentBet;
+            document.getElementById('pause-resume-button').disabled = modeFailed;
+            document.getElementById('pause-new-game-button').disabled = currentGameMode === 'daily'
+                && localStorage.getItem('solitaire-daily-mode-date') === getLocalDateKey();
+            localStorage.setItem('solitaire-victory-count', victoryCount);
+            localStorage.setItem('solitaire-streak-wins', streakWins);
+            const matchActive = Boolean(localMatch && !localMatch.finished);
+            document.getElementById('difficulty').disabled = matchActive;
+            document.getElementById('game-mode').disabled = matchActive;
+            document.getElementById('bet-amount').disabled = matchActive || adminCountersFixed;
+            document.getElementById('match-player-count').disabled = matchActive;
+            document.getElementById('reset-button').disabled = matchActive;
+            document.getElementById('match-exit-button').hidden = !matchActive;
+            document.getElementById('match-button').disabled = matchActive && !localMatch.waitingForNextPlayer;
+            document.getElementById('match-button').textContent = matchActive
+                ? localMatch.waitingForNextPlayer ? `プレイヤー${localMatch.currentPlayer + 1}開始` : 'プレイ中'
+                : '対戦開始';
+            updateUndoButton();
+            render();
+            updateStats();
+            return true;
+        } catch {
+            localStorage.removeItem(gameSaveKey);
+            return false;
+        }
+    }
+
+    function startGameTimer() {
+        clearInterval(timerInterval);
+        if (gameWon || isPaused) return;
+        timerInterval = setInterval(() => {
+            elapsedSeconds += adminModeEnabled ? adminTimeSpeed : 1;
+            updateStats();
+            if (currentGameMode === 'timed' && elapsedSeconds >= timedModeLimitSeconds) {
+                failGameMode('時間切れです。制限時間の5分以内にクリアできませんでした。');
+                return;
+            }
+            saveCurrentGame();
+        }, 1000);
+        resetIdleHintTimer();
+    }
+
+    function failGameMode(message) {
+        if (modeFailed) return;
+        modeFailed = true;
+        clearInterval(timerInterval);
+        timerInterval = null;
+        clearTimeout(idleHintTimeout);
+        playSound('fail');
+        document.getElementById('game-status').textContent = message;
+        updateStats();
+        saveCurrentGame();
+    }
+
+    function pauseGame() {
+        if (gameWon || isPaused || modeFailed) return;
+        isPaused = true;
+        clearInterval(timerInterval);
+        timerInterval = null;
+        clearTimeout(idleHintTimeout);
+        saveCurrentGame();
+        document.getElementById('pause-message').textContent = 'ゲームを一時停止しました。続きから再開できます。';
+        document.getElementById('pause-dialog').showModal();
+    }
+
+    function resumeGame() {
+        if (modeFailed) return;
+        isPaused = false;
+        document.getElementById('pause-dialog').close();
+        if (localMatch && localMatch.waitingForNextPlayer) {
+            document.getElementById('game-status').textContent = `プレイヤー${localMatch.currentPlayer}はクリア済みです。次のプレイヤーを開始できます。`;
+        } else if (!gameWon) {
+            startGameTimer();
+        }
+        saveCurrentGame();
+    }
+
+    function startNewGameFromPause() {
+        document.getElementById('pause-dialog').close();
+        isPaused = false;
+        localMatch = null;
+        document.getElementById('difficulty').disabled = false;
+        document.getElementById('game-mode').disabled = false;
+        document.getElementById('bet-amount').disabled = adminCountersFixed;
+        document.getElementById('match-player-count').disabled = false;
+        document.getElementById('reset-button').disabled = false;
+        document.getElementById('match-exit-button').hidden = true;
+        document.getElementById('match-button').disabled = false;
+        document.getElementById('match-button').textContent = '対戦開始';
+        document.getElementById('match-results').hidden = true;
+        initGame();
+    }
+
+    function initializeGame() {
+        const savedGame = getSavedGame();
+        if (savedGame && restoreSavedGame(savedGame)) {
+            const bonusGranted = grantDailyLoginBonus();
+            if (bonusGranted) {
+                updateStats();
+                saveCurrentGame();
+                document.getElementById('game-status').textContent = 'ログインボーナスとして5勝利を獲得しました。';
+            }
+            document.getElementById('pause-message').textContent = savedGame.modeFailed
+                ? '保存された挑戦は失敗済みです。新しいゲームを始めてください。'
+                : '保存されたゲームがあります。続きから再開するか、新しいゲームを始めてください。';
+            document.getElementById('pause-dialog').showModal();
+            return;
+        }
+        const dailyModeAlreadyPlayed = currentGameMode === 'daily'
+            && localStorage.getItem('solitaire-daily-mode-date') === getLocalDateKey();
+        if (dailyModeAlreadyPlayed) {
+            currentGameMode = 'classic';
+            localStorage.setItem('solitaire-current-game-mode', currentGameMode);
+        }
+        document.getElementById('game-mode').value = currentGameMode;
+        const bonusGranted = grantDailyLoginBonus();
+        initGame();
+        if (bonusGranted) {
+            updateStats();
+            document.getElementById('game-status').textContent = 'ログインボーナスとして5勝利を獲得しました。';
+        }
+        if (dailyModeAlreadyPlayed) {
+            document.getElementById('game-status').textContent = `本日の1日1局モードは挑戦済みです。通常モードで開始しました。${bonusGranted ? ' ログインボーナスとして5勝利を獲得しました。' : ''}`;
+        }
+    }
+
+    function updateStats() {
+        const remainingSeconds = Math.max(0, timedModeLimitSeconds - elapsedSeconds);
+        document.getElementById('timer').textContent = formatTime(currentGameMode === 'timed' ? remainingSeconds : elapsedSeconds);
+        document.getElementById('victory-count').textContent = victoryCount.toString();
+        document.getElementById('total-wins').textContent = totalWins.toString();
+        const modeProgress = document.getElementById('mode-progress');
+        modeProgress.textContent = currentGameMode === 'daily'
+            ? `本日の局: ${localStorage.getItem('solitaire-daily-mode-date') === getLocalDateKey() ? '挑戦済み' : '未挑戦'}`
+            : currentGameMode === 'no-mistake'
+                ? (modeFailed ? 'ノーミス失敗' : 'ミス 0')
+                : currentGameMode === 'streak'
+                    ? `連鎖: ${streakWins}勝 / 次回報酬: ${streakWins + 1}`
+                    : currentGameMode === 'timed'
+                        ? (modeFailed ? '時間切れ' : '制限時間: 5分')
+                        : '';
+        document.getElementById('reset-button').disabled = currentGameMode === 'daily' || Boolean(localMatch && !localMatch.finished);
+        document.getElementById('bet-amount').disabled = adminCountersFixed || Boolean(localMatch && !localMatch.finished);
+        document.getElementById('pause-button').disabled = modeFailed || gameWon;
+        updateShop();
+        renderAchievements();
+    }
+
+    function toggleShop() {
+        const shop = document.getElementById('shop');
+        const shopToggleButton = document.getElementById('shop-toggle-button');
+        const isOpen = shop.classList.toggle('open');
+        shopToggleButton.setAttribute('aria-expanded', isOpen);
+        shopToggleButton.textContent = isOpen ? 'ショップを隠す' : 'ショップを表示';
+    }
+
+    function updateShop() {
+        const shuffleButton = document.getElementById('shuffle-button');
+        const newModeButton = document.getElementById('new-mode-button');
+        const newModeOption = document.getElementById('new-mode-option');
+        const normalOption = document.getElementById('normal-option');
+        const hardOption = document.getElementById('hard-option');
+        const characterMarkButton = document.getElementById('character-mark-button');
+        const characterCardTwoButton = document.getElementById('character-card-two-button');
+        const shuffleUnlocked = victoryCount >= 3;
+        const newModeUnlocked = victoryCount >= 10;
+        const normalUnlocked = victoryCount >= 3;
+        const hardUnlocked = victoryCount >= 5;
+        const characterMarksUnlocked = victoryCount >= 15;
+
+        shuffleButton.disabled = !shuffleUnlocked;
+        shuffleButton.textContent = shuffleUnlocked ? 'カードをシャッフル' : '3勝利でカードをシャッフル';
+        newModeButton.disabled = newModeUnlocked;
+        newModeButton.textContent = newModeUnlocked ? '新モード解放済み' : '10勝利で新モードを解放';
+        newModeOption.disabled = !newModeUnlocked;
+        normalOption.disabled = !normalUnlocked;
+        hardOption.disabled = !hardUnlocked;
+        normalOption.textContent = normalUnlocked ? '普通（2枚めくり）' : '普通（3勝利で解放・2枚めくり）';
+        hardOption.textContent = hardUnlocked ? '難しい（3枚めくり）' : '難しい（5勝利で解放・3枚めくり）';
+        characterMarkButton.disabled = !characterMarksUnlocked;
+        characterMarkButton.classList.toggle('active', characterMarksUnlocked && characterCardSet === 1);
+        characterMarkButton.textContent = characterMarksUnlocked
+            ? (characterCardSet === 2 ? 'キャラカード1に切り替え' : characterCardSet === 1 ? '通常マークに切り替え' : 'キャラカード1を使う')
+            : '15勝利でマーク切り替えを解放';
+        characterCardTwoButton.disabled = !characterMarksUnlocked;
+        characterCardTwoButton.classList.toggle('active', characterMarksUnlocked && characterCardSet === 2);
+        characterCardTwoButton.textContent = characterMarksUnlocked
+            ? (characterCardSet === 2 ? 'キャラカード1に切り替え' : 'キャラカード2を使う')
+            : '15勝利でキャラカード2を解放';
+    }
+
+    function toggleCharacterMarks() {
+        if (victoryCount < 15) return;
+        characterCardSet = characterCardSet === 1 ? 0 : 1;
+        saveCharacterCardSet();
+    }
+
+    function toggleCharacterCardTwo() {
+        if (victoryCount < 15) return;
+        characterCardSet = characterCardSet === 2 ? 1 : 2;
+        saveCharacterCardSet();
+    }
+
+    function saveCharacterCardSet() {
+        characterMarksEnabled = characterCardSet !== 0;
+        localStorage.setItem('solitaire-character-card-set', characterCardSet);
+        localStorage.setItem('solitaire-character-marks', characterMarksEnabled);
+        updateShop();
+        render();
+    }
+
+    function shuffleDeck(cards, random = Math.random) {
+        for (let i = cards.length - 1; i > 0; i--) {
+            const j = Math.floor(random() * (i + 1));
+            [cards[i], cards[j]] = [cards[j], cards[i]];
+        }
+        return cards;
+    }
+
+    function createDailyRandom(date) {
+        let seed = 2166136261;
+        for (const character of date) seed = Math.imul(seed ^ character.charCodeAt(0), 16777619);
+        return () => {
+            seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0;
+            return seed / 4294967296;
+        };
+    }
+
+    function dealDeck(cards) {
+        gameState.stock = [];
+        gameState.waste = [];
+        gameState.foundation = [[], [], [], []];
+        gameState.tableau = [[], [], [], [], [], [], []];
+        cards.forEach(card => card.faceUp = false);
+
+        let deckIndex = 0;
+        for (let i = 0; i < 7; i++) {
+            for (let j = i; j < 7; j++) {
+                gameState.tableau[j].push(cards[deckIndex++]);
+            }
+            gameState.tableau[i][gameState.tableau[i].length - 1].faceUp = true;
+        }
+
+        while (deckIndex < cards.length) {
+            gameState.stock.push(cards[deckIndex++]);
+        }
+    }
+
+    function shuffleCurrentCards(isStalemateRecovery = false) {
+        if (modeFailed) return;
+        if (!isStalemateRecovery && currentGameMode === 'no-mistake') return;
+        if (!isStalemateRecovery && victoryCount < 3) return;
+        if (!isStalemateRecovery) saveUndoSnapshot();
+        playSound('shuffle');
+
+        const currentCards = [
+            ...gameState.stock,
+            ...gameState.waste,
+            ...gameState.tableau.flat()
+        ];
+        gameWon = false;
+        gameState.stock = [];
+        gameState.waste = [];
+        gameState.tableau = [[], [], [], [], [], [], []];
+        const shuffledCards = shuffleDeck(currentCards);
+        shuffledCards.forEach(card => card.faceUp = false);
+
+        let deckIndex = 0;
+        for (let i = 0; i < 7; i++) {
+            for (let j = i; j < 7 && deckIndex < shuffledCards.length; j++) {
+                gameState.tableau[j].push(shuffledCards[deckIndex++]);
+            }
+            if (gameState.tableau[i].length > 0) {
+                gameState.tableau[i][gameState.tableau[i].length - 1].faceUp = true;
+            }
+        }
+        while (deckIndex < shuffledCards.length) {
+            gameState.stock.push(shuffledCards[deckIndex++]);
+        }
+
+        render();
+        updateStats();
+        if (isStalemateRecovery) {
+            document.getElementById('game-status').textContent = '詰みになったため、カードをシャッフルしました。';
+        }
+        if (timerInterval === null) {
+            startGameTimer();
+        }
+    }
+
+    function unlockNewMode() {
+        if (victoryCount < 10) return;
+        document.getElementById('new-mode-option').disabled = false;
+        updateShop();
+        alert('新モードを解放しました！');
+    }
+
+    function initGame() {
+        const requestedMode = document.getElementById('game-mode').value;
+        const today = getLocalDateKey();
+        if (requestedMode === 'daily' && localStorage.getItem('solitaire-daily-mode-date') === today) {
+            document.getElementById('game-mode').value = currentGameMode;
+            document.getElementById('difficulty').value = currentDifficulty;
+            document.getElementById('game-status').textContent = '本日の1日1局モードは挑戦済みです。明日また挑戦してください。';
+            return;
+        }
+        const continueStreak = requestedMode === 'streak' && currentGameMode === 'streak'
+            && (gameWon || (elapsedSeconds === 0 && streakWins > 0 && !modeFailed));
+        clearInterval(timerInterval);
+        clearTimeout(idleHintTimeout);
+        timerInterval = null;
+        isPaused = false;
+        localStorage.removeItem(gameSaveKey);
+        clearUndoHistory();
+        elapsedSeconds = 0;
+        gameWon = false;
+        modeFailed = false;
+        currentGameMode = requestedMode;
+        localStorage.setItem('solitaire-current-game-mode', currentGameMode);
+        if (currentGameMode === 'streak' && !continueStreak) streakWins = 0;
+        if (currentGameMode !== 'streak') streakWins = 0;
+        localStorage.setItem('solitaire-streak-wins', streakWins);
+        document.getElementById('game-status').textContent = '';
+        if (!adminCountersFixed) victoryCount += currentBet;
+        currentBet = 0;
+        const difficulty = document.getElementById('difficulty').value;
+        currentDifficulty = difficulty;
+        const requestedBet = adminCountersFixed ? 0 : Number(document.getElementById('bet-amount').value) || 0;
+        currentBet = Math.max(0, Math.floor(requestedBet));
+        if (currentBet > victoryCount) {
+            currentBet = 0;
+            document.getElementById('bet-amount').value = 0;
+            document.getElementById('game-status').textContent = '勝利数が足りないため、賭け金を0にしました。';
+        }
+        if (!adminCountersFixed) victoryCount -= currentBet;
+        localStorage.setItem('solitaire-victory-count', victoryCount);
+        drawCount = difficulty === 'easy' ? 1 : difficulty === 'hard' ? 3 : difficulty === 'new' ? 4 : 2;
+        deck = [];
+        for (let s of suits) {
+            for (let r = 0; r < ranks.length; r++) {
+                deck.push({ suit: s, rank: r, rankStr: ranks[r], faceUp: false });
+            }
+        }
+        const random = currentGameMode === 'daily' ? createDailyRandom(today) : Math.random;
+        dealDeck(shuffleDeck(deck, random));
+        if (currentGameMode === 'daily') localStorage.setItem('solitaire-daily-mode-date', today);
+
+        render();
+        updateStats();
+        startGameTimer();
+    }
+
+    function handleLocalMatchButton() {
+        if (!localMatch || localMatch.finished) {
+            if (currentGameMode !== 'classic') {
+                document.getElementById('game-status').textContent = '特殊ゲームモードはローカル対戦では使用できません。通常モードに戻してください。';
+                return;
+            }
+            startLocalMatch();
+            return;
+        }
+        if (!localMatch.waitingForNextPlayer) return;
+
+        localMatch.currentPlayer++;
+        localMatch.waitingForNextPlayer = false;
+        startLocalMatchRound();
+    }
+
+    function startLocalMatch() {
+        if (currentBet > 0 && !gameWon && !adminCountersFixed) {
+            victoryCount += currentBet;
+            localStorage.setItem('solitaire-victory-count', victoryCount);
+        }
+        currentBet = 0;
+        document.getElementById('bet-amount').value = 0;
+        localMatch = {
+            playerCount: Number(document.getElementById('match-player-count').value),
+            currentPlayer: 1,
+            results: [],
+            waitingForNextPlayer: false,
+            finished: false
+        };
+        document.getElementById('difficulty').disabled = true;
+        document.getElementById('game-mode').disabled = true;
+        document.getElementById('bet-amount').disabled = true;
+        document.getElementById('match-player-count').disabled = true;
+        document.getElementById('reset-button').disabled = true;
+        document.getElementById('match-exit-button').hidden = false;
+        document.getElementById('match-button').disabled = true;
+        document.getElementById('match-results').hidden = true;
+        document.getElementById('match-results').innerHTML = '';
+        startLocalMatchRound();
+    }
+
+    function startLocalMatchRound() {
+        initGame();
+        document.getElementById('game-status').textContent = `プレイヤー${localMatch.currentPlayer}の番です。準備ができたらプレイしてください。`;
+        document.getElementById('match-button').textContent = 'プレイ中';
+    }
+
+    function finishLocalMatch() {
+        localMatch.finished = true;
+        document.getElementById('difficulty').disabled = false;
+        document.getElementById('game-mode').disabled = false;
+        document.getElementById('bet-amount').disabled = adminCountersFixed;
+        document.getElementById('match-player-count').disabled = false;
+        document.getElementById('reset-button').disabled = false;
+        document.getElementById('match-exit-button').hidden = true;
+        const rankedResults = [...localMatch.results].sort((first, second) => first.seconds - second.seconds);
+        document.getElementById('match-results').innerHTML = `
+            <h2>対戦結果</h2>
+            <ol>${rankedResults.map(result => `<li>プレイヤー${result.player}: ${formatTime(result.seconds)}</li>`).join('')}</ol>
+        `;
+        document.getElementById('match-results').hidden = false;
+        document.getElementById('game-status').textContent = `最速はプレイヤー${rankedResults[0].player}です。`;
+        const matchButton = document.getElementById('match-button');
+        matchButton.disabled = false;
+        matchButton.textContent = 'もう一度対戦';
+        saveCurrentGame();
+    }
+
+    function endLocalMatch() {
+        if (!localMatch || localMatch.finished) return;
+        localMatch = null;
+        document.getElementById('difficulty').disabled = false;
+        document.getElementById('game-mode').disabled = false;
+        document.getElementById('bet-amount').disabled = adminCountersFixed;
+        document.getElementById('match-player-count').disabled = false;
+        document.getElementById('reset-button').disabled = false;
+        document.getElementById('match-exit-button').hidden = true;
+        document.getElementById('match-button').disabled = false;
+        document.getElementById('match-button').textContent = '対戦開始';
+        document.getElementById('match-results').hidden = true;
+        initGame();
+        document.getElementById('game-status').textContent = '対戦を終了しました。';
+    }
+
+    function saveUndoSnapshot() {
+        const allCards = [
+            ...gameState.stock,
+            ...gameState.waste,
+            ...gameState.foundation.flat(),
+            ...gameState.tableau.flat()
+        ];
+        undoHistory.push({
+            stock: [...gameState.stock],
+            waste: [...gameState.waste],
+            foundation: gameState.foundation.map(pile => [...pile]),
+            tableau: gameState.tableau.map(pile => [...pile]),
+            faceUpStates: allCards.map(card => [card, card.faceUp]),
+            victoryCount,
+            currentBet,
+            gameWon
+        });
+        if (undoHistory.length > maxUndoHistory) undoHistory.shift();
+        updateUndoButton();
+    }
+
+    function updateUndoButton() {
+        const undoButton = document.getElementById('undo-button');
+        if (!undoButton) return;
+        undoButton.textContent = undoHistory.length > 0 ? `一手戻す (${undoHistory.length})` : '一手戻す';
+        undoButton.disabled = undoHistory.length === 0 || currentGameMode === 'no-mistake' || modeFailed;
+    }
+
+    function clearUndoHistory() {
+        undoHistory.length = 0;
+        updateUndoButton();
+    }
+
+    function undoMove() {
+        if (undoHistory.length === 0 || currentGameMode === 'no-mistake' || modeFailed) return;
+
+        playSound('undo');
+        clearInterval(timerInterval);
+        const undoSnapshot = undoHistory.pop();
+        gameState.stock = undoSnapshot.stock;
+        gameState.waste = undoSnapshot.waste;
+        gameState.foundation = undoSnapshot.foundation;
+        gameState.tableau = undoSnapshot.tableau;
+        undoSnapshot.faceUpStates.forEach(([card, faceUp]) => { card.faceUp = faceUp; });
+        if (!adminCountersFixed) {
+            victoryCount = undoSnapshot.victoryCount;
+            currentBet = undoSnapshot.currentBet;
+        } else {
+            currentBet = 0;
+        }
+        gameWon = undoSnapshot.gameWon;
+        if (!adminCountersFixed) localStorage.setItem('solitaire-victory-count', victoryCount);
+        updateUndoButton();
+        render();
+        updateStats();
+
+        if (!gameWon) {
+            startGameTimer();
+        } else {
+            timerInterval = null;
+        }
+    }
+
+    function createCardDOM(card, index, isTableau = false, animationClass = '') {
+        const cardDiv = document.createElement('div');
+        cardDiv.classList.add('card');
+        if (animationClass) cardDiv.classList.add(animationClass);
+        
+        if (!card.faceUp) {
+            cardDiv.classList.add('back');
+            cardDiv.innerHTML = `
+                <span class="back-mark top-left">♠</span>
+                <span class="back-mark top-right">♥</span>
+                <span class="back-mark bottom-left">♦</span>
+                <span class="back-mark bottom-right">♣</span>
+            `;
+            return cardDiv;
+        }
+
+        cardDiv.classList.add(card.suit.color);
+        const characterImages = [
+            { name: 'エルフィン', src: 'img/エルフィン.png' },
+            { name: 'ヴィヴィ', src: 'img/ヴィヴィ.png' },
+            { name: 'クロエ', src: 'img/クロエ.png' },
+            { name: 'シオン', src: 'img/シオン.png' },
+            { name: 'イード', src: 'img/イード.png' },
+            { name: 'エピカ', src: 'img/エピカ.png' },
+            { name: 'ウイ', src: 'img/ウイ.png' },
+            { name: 'アヤ', src: 'img/アヤ.png' },
+            { name: 'ヨミ', src: 'img/ヨミ.png' },
+            { name: 'リニュア', src: 'img/リニュア.png' },
+            { name: 'ネル', src: 'img/ネル.png' },
+            { name: 'ベリータ', src: 'img/ベリータ.png' },
+            { name: 'ジョアン', src: 'img/ジョアン.png' }
+        ];
+        const character = characterImages[card.rank];
+        const characterCardTwoImages = [
+            { name: 'サヨリ', src: 'img/chibi-sayori.png' },
+            { name: 'ナツキ', src: 'img/chibi-natsuki.png' },
+            { name: 'ユリ', src: 'img/chibi-yuri.png' },
+            { name: 'モニカ', src: 'img/chibi-monika.png' }
+        ];
+        const selectedCharacter = characterCardSet === 2
+            ? characterCardTwoImages[card.rank % characterCardTwoImages.length]
+            : character;
+        const mark = characterMarksEnabled
+            ? `<img class="suit-large" src="${selectedCharacter.src}" alt="${selectedCharacter.name}">`
+            : `<span class="suit-large suit-symbol">${card.suit.char}</span>`;
+        cardDiv.innerHTML = `
+            <div class="card-corner top-left">${card.rankStr}<span>${card.suit.char}</span></div>
+            ${mark}
+            <div class="card-corner bottom-right">${card.rankStr}<span>${card.suit.char}</span></div>
+        `;
+
+        if (isTableau) {
+            cardDiv.style.top = `${index * 25}px`;
+        }
+
+        cardDiv.draggable = true;
+        return cardDiv;
+    }
+
+    function drawCard() {
+        if (modeFailed) return;
+        const revealedCards = [];
+        if (gameState.stock.length > 0 || gameState.waste.length > 0) {
+            saveUndoSnapshot();
+        }
+        if (gameState.stock.length === 0) {
+            // 山札の補充
+            gameState.stock = gameState.waste.reverse().map(c => { c.faceUp = false; return c; });
+            gameState.waste = [];
+            playSound('shuffle');
+        } else {
+            for (let i = 0; i < drawCount && gameState.stock.length > 0; i++) {
+                let card = gameState.stock.pop();
+                card.faceUp = true;
+                gameState.waste.push(card);
+                revealedCards.push(card);
+            }
+            playSound('draw');
+        }
+        render({ revealedCards });
+    }
+
+    function canMoveToTableau(card, targetPile) {
+        if (targetPile.length === 0) return card.rank >= 10;
+        const targetCard = targetPile[targetPile.length - 1];
+        return targetCard.suit.color !== card.suit.color && targetCard.rank === card.rank + 1;
+    }
+
+    function canMoveToFoundation(card, targetPile) {
+        if (targetPile.length === 0) return card.rank === 0;
+        const targetCard = targetPile[targetPile.length - 1];
+        return targetCard.suit.name === card.suit.name && targetCard.rank === card.rank - 1;
+    }
+
+    function hasAvailableMove() {
+        for (let sourceIndex = 0; sourceIndex < gameState.tableau.length; sourceIndex++) {
+            const sourcePile = gameState.tableau[sourceIndex];
+            for (const card of sourcePile) {
+                if (!card.faceUp) continue;
+
+                const foundationIndex = suits.findIndex(suit => suit.name === card.suit.name);
+                if (canMoveToFoundation(card, gameState.foundation[foundationIndex])) return true;
+
+                for (let targetIndex = 0; targetIndex < gameState.tableau.length; targetIndex++) {
+                    if (sourceIndex !== targetIndex && canMoveToTableau(card, gameState.tableau[targetIndex])) {
+                        return true;
+                    }
+                }
+            }
+        }
+
+        for (const foundation of gameState.foundation) {
+            if (foundation.length === 0) continue;
+            const card = foundation[foundation.length - 1];
+            if (gameState.tableau.some(targetPile => canMoveToTableau(card, targetPile))) return true;
+        }
+
+        return false;
+    }
+
+    function checkForStalemate() {
+        if (gameState.stock.length > 0 || gameState.waste.length > 0 || hasAvailableMove()) return;
+        shuffleCurrentCards(true);
+    }
+
+    function render({ movedCards = [], revealedCards = [] } = {}) {
+        const movedCardSet = new Set(movedCards);
+        const revealedCardSet = new Set(revealedCards);
+        const animationClassForCard = card => revealedCardSet.has(card)
+            ? 'card-reveal'
+            : movedCardSet.has(card) ? 'card-move-in' : '';
+        // 山札
+        const stockPile = document.getElementById('stock');
+        stockPile.innerHTML = '';
+        if (gameState.stock.length > 0) {
+            stockPile.appendChild(createCardDOM({ faceUp: false }));
+        }
+
+        // 捨て札
+        const wastePile = document.getElementById('waste');
+        wastePile.innerHTML = '';
+        if (gameState.waste.length > 0) {
+            const card = gameState.waste[gameState.waste.length - 1];
+            wastePile.appendChild(createCardDOM(card, undefined, false, animationClassForCard(card)));
+        }
+
+        // 回収場所
+        for (let i = 0; i < 4; i++) {
+            const fPile = document.getElementById(`f${i}`);
+            fPile.innerHTML = '';
+            if (gameState.foundation[i].length > 0) {
+                const card = gameState.foundation[i][gameState.foundation[i].length - 1];
+                fPile.appendChild(createCardDOM(card, undefined, false, animationClassForCard(card)));
+            }
+        }
+
+        // 場札
+        for (let i = 0; i < 7; i++) {
+            const tPile = document.getElementById(`t${i}`);
+            tPile.innerHTML = '';
+            let pileHeight = 130;
+            gameState.tableau[i].forEach((card, index) => {
+                const cardDOM = createCardDOM(card, index, true, animationClassForCard(card));
+                const topOffset = gameState.tableau[i]
+                    .slice(0, index)
+                    .reduce((offset, previousCard) => offset + (previousCard.faceUp ? 24 : 16), 0);
+                cardDOM.style.top = `${topOffset}px`;
+                pileHeight = Math.max(pileHeight, topOffset + 130);
+                
+                // ドラッグイベントの登録
+                if (card.faceUp) {
+                    cardDOM.addEventListener('dragstart', (e) => {
+                        draggedCards = gameState.tableau[i].slice(index);
+                        dragSource = { type: 'tableau', index: i, cardIndex: index };
+                    });
+                    cardDOM.addEventListener('dblclick', event => {
+                        event.preventDefault();
+                        autoMoveCardToFoundation(card, 'tableau', i, index);
+                    });
+                }
+                tPile.appendChild(cardDOM);
+            });
+            tPile.style.height = `${pileHeight}px`;
+
+            // 空の場札へのドロップ対応
+            tPile.addEventListener('dragover', (e) => e.preventDefault());
+            tPile.addEventListener('drop', (e) => handleDrop('tableau', i));
+        }
+
+        // 捨て札と回収場所のドラッグ・ドロップ設定
+        const wasteDOM = wastePile.querySelector('.card');
+        if (wasteDOM) {
+            wasteDOM.addEventListener('dragstart', () => {
+                draggedCards = [gameState.waste[gameState.waste.length - 1]];
+                dragSource = { type: 'waste' };
+            });
+            wasteDOM.addEventListener('dblclick', event => {
+                event.preventDefault();
+                autoMoveCardToFoundation(gameState.waste[gameState.waste.length - 1], 'waste');
+            });
+        }
+
+        for (let i = 0; i < 4; i++) {
+            const fPile = document.getElementById(`f${i}`);
+            fPile.addEventListener('dragover', (e) => e.preventDefault());
+            fPile.addEventListener('drop', () => handleDrop('foundation', i));
+            
+            const fDOM = fPile.querySelector('.card');
+            if (fDOM) {
+                fDOM.addEventListener('dragstart', () => {
+                    draggedCards = [gameState.foundation[i][gameState.foundation[i].length - 1]];
+                    dragSource = { type: 'foundation', index: i };
+                });
+            }
+        }
+        saveCurrentGame();
+    }
+
+    function playVictoryAnimation() {
+        const cardElements = [...document.querySelectorAll('#game-container .card:not(.back)')];
+        cardElements.forEach((cardElement, index) => {
+            cardElement.style.setProperty('--victory-delay', `${Math.min(index, 18) * 30}ms`);
+            cardElement.classList.add('card-victory');
+        });
+        setTimeout(() => {
+            cardElements.forEach(cardElement => {
+                cardElement.classList.remove('card-victory');
+                cardElement.style.removeProperty('--victory-delay');
+            });
+        }, 1500);
+    }
+
+    function handleDrop(destType, destIndex) {
+        if (modeFailed || draggedCards.length === 0) return;
+
+        const movedCards = [...draggedCards];
+        const firstDragged = draggedCards[0];
+        let isValid = false;
+        let newlyRevealedCard = null;
+
+        if (destType === 'tableau') {
+            const targetPile = gameState.tableau[destIndex];
+            if (targetPile.length === 0) {
+                // 空の場札にはJ・Q・Kを置ける
+                if (firstDragged.rank >= 10) isValid = true;
+            } else {
+                const targetCard = targetPile[targetPile.length - 1];
+                // 異なる色かつ、ランクが1小さいこと
+                if (targetCard.suit.color !== firstDragged.suit.color && targetCard.rank === firstDragged.rank + 1) {
+                    isValid = true;
+                }
+            }
+
+            if (isValid) {
+                saveUndoSnapshot();
+                removeDraggedCardsFromSource();
+                gameState.tableau[destIndex] = gameState.tableau[destIndex].concat(draggedCards);
+            }
+        } else if (destType === 'foundation' && draggedCards.length === 1) {
+            const targetPile = gameState.foundation[destIndex];
+            if (targetPile.length === 0) {
+                // 空の回収場所にはA(0)のみ置ける
+                if (firstDragged.rank === 0) isValid = true;
+            } else {
+                const targetCard = targetPile[targetPile.length - 1];
+                // 同じスートかつ、ランクが1大きいこと
+                if (targetCard.suit.name === firstDragged.suit.name && targetCard.rank === firstDragged.rank - 1) {
+                    isValid = true;
+                }
+            }
+
+            if (isValid) {
+                saveUndoSnapshot();
+                removeDraggedCardsFromSource();
+                gameState.foundation[destIndex].push(firstDragged);
+            }
+        }
+
+        if (!isValid && currentGameMode === 'no-mistake') {
+            draggedCards = [];
+            dragSource = null;
+            playSound('fail');
+            failGameMode('不正な移動をしたため、ノーミス挑戦は失敗です。リセットして再挑戦できます。');
+            return;
+        }
+
+        if (isValid) playSound('move');
+
+        // 元の場所の最後のカードを表に返す
+        if (isValid && dragSource.type === 'tableau' && gameState.tableau[dragSource.index].length > 0) {
+            newlyRevealedCard = gameState.tableau[dragSource.index][gameState.tableau[dragSource.index].length - 1];
+            newlyRevealedCard.faceUp = true;
+        }
+
+        draggedCards = [];
+        dragSource = null;
+        render({ movedCards, revealedCards: newlyRevealedCard ? [newlyRevealedCard] : [] });
+        checkWin();
+        if (!gameWon) checkForStalemate();
+    }
+
+    function removeDraggedCardsFromSource() {
+        if (dragSource.type === 'tableau') {
+            gameState.tableau[dragSource.index].splice(dragSource.cardIndex);
+        } else if (dragSource.type === 'waste') {
+            gameState.waste.pop();
+        } else if (dragSource.type === 'foundation') {
+            gameState.foundation[dragSource.index].pop();
+        }
+    }
+
+    function autoMoveCardToFoundation(card, sourceType, sourceIndex, cardIndex) {
+        if (modeFailed || gameWon || isPaused) return;
+
+        const sourcePile = sourceType === 'tableau'
+            ? gameState.tableau[sourceIndex]
+            : sourceType === 'waste' ? gameState.waste : null;
+        if (!sourcePile) return;
+        const sourceCardIndex = sourceType === 'tableau' ? cardIndex : sourcePile.length - 1;
+        if (sourceCardIndex !== sourcePile.length - 1 || sourcePile[sourceCardIndex] !== card) return;
+
+        const foundationIndex = suits.findIndex(suit => suit.name === card.suit.name);
+        if (!canMoveToFoundation(card, gameState.foundation[foundationIndex])) return;
+
+        saveUndoSnapshot();
+        sourcePile.pop();
+        let newlyRevealedCard = null;
+        if (sourceType === 'tableau' && sourcePile.length > 0) {
+            newlyRevealedCard = sourcePile[sourcePile.length - 1];
+            newlyRevealedCard.faceUp = true;
+        }
+        gameState.foundation[foundationIndex].push(card);
+        playSound('move');
+        render({ movedCards: [card], revealedCards: newlyRevealedCard ? [newlyRevealedCard] : [] });
+        checkWin();
+        if (!gameWon) checkForStalemate();
+    }
+
+    function checkWin() {
+        if (gameWon || modeFailed) return;
+
+        let win = true;
+        for (let i = 0; i < 4; i++) {
+            if (gameState.foundation[i].length !== 13) win = false;
+        }
+        if (win) {
+            gameWon = true;
+            clearInterval(timerInterval);
+            timerInterval = null;
+            playSound('win');
+            playVictoryAnimation();
+            if (currentGameMode === 'streak') {
+                streakWins++;
+                localStorage.setItem('solitaire-streak-wins', streakWins);
+            }
+            clearUndoHistory();
+            updateUndoButton();
+            if (!adminCountersFixed) {
+                totalWins++;
+                localStorage.setItem('solitaire-total-wins', totalWins);
+            }
+            const clearedDifficulties = new Set(JSON.parse(localStorage.getItem('solitaire-cleared-difficulties') || '[]'));
+            clearedDifficulties.add(currentDifficulty);
+            localStorage.setItem('solitaire-cleared-difficulties', JSON.stringify([...clearedDifficulties]));
+            const newlyUnlocked = unlockEligibleAchievements();
+            saveRecentSpeedRecord();
+            saveAchievements();
+            updateStats();
+            if (localMatch && !localMatch.finished) {
+                localMatch.results.push({ player: localMatch.currentPlayer, seconds: elapsedSeconds });
+                clearUndoHistory();
+                updateUndoButton();
+                if (localMatch.currentPlayer < localMatch.playerCount) {
+                    localMatch.waitingForNextPlayer = true;
+                    document.getElementById('game-status').textContent = `プレイヤー${localMatch.currentPlayer}は${formatTime(elapsedSeconds)}でクリア。端末を交代してください。`;
+                    const matchButton = document.getElementById('match-button');
+                    matchButton.disabled = false;
+                    matchButton.textContent = `プレイヤー${localMatch.currentPlayer + 1}開始`;
+                } else {
+                    finishLocalMatch();
+                }
+                if (newlyUnlocked.length > 0) {
+                    const status = document.getElementById('game-status');
+                    status.textContent += ` 実績を獲得しました: ${newlyUnlocked.join('、')}`;
+                }
+                saveCurrentGame();
+                return;
+            }
+            const victoryReward = currentDifficulty === 'normal' ? 2 : currentDifficulty === 'hard' ? 3 : 1;
+            const multiplier = currentDifficulty === 'easy' ? 1.5 : currentDifficulty === 'hard' ? 2.5 : 2;
+            const betUsed = currentBet;
+            const streakBonus = currentGameMode === 'streak' ? streakWins : 0;
+            const payout = betUsed > 0
+                ? betUsed * multiplier + streakBonus
+                : currentGameMode === 'streak' ? streakWins : victoryReward;
+            if (!adminCountersFixed) victoryCount += payout;
+            currentBet = 0;
+            if (!adminCountersFixed) {
+                localStorage.setItem('solitaire-victory-count', victoryCount);
+                savePersonalRecord(payout);
+            }
+            updateStats();
+            if (newlyUnlocked.length > 0) {
+                document.getElementById('game-status').textContent = `実績を獲得しました: ${newlyUnlocked.join('、')}`;
+            }
+            saveCurrentGame();
+            const payoutMessage = adminCountersFixed
+                ? '管理者設定により勝利数・クリア数は固定されています。'
+                : betUsed > 0
+                ? `${betUsed}勝利を${multiplier}倍して${payout}勝利を獲得しました！${streakBonus > 0 ? `（連鎖報酬+${streakBonus}）` : ''}`
+                : currentGameMode === 'streak' ? `連鎖${streakWins}勝！${payout}勝利を獲得しました！` : 'クリアです！';
+            setTimeout(() => alert(`おめでとうございます！${payoutMessage}`), 850);
+        }
+    }
+
+    document.addEventListener('pointerdown', resetIdleHintTimer);
+    document.addEventListener('keydown', resetIdleHintTimer);
+    document.addEventListener('pagehide', saveCurrentGame);
+    document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'hidden') saveCurrentGame();
+    });
+    document.getElementById('pause-dialog').addEventListener('cancel', event => event.preventDefault());
+    document.getElementById('admin-code').addEventListener('keydown', event => {
+        if (event.key === 'Enter') unlockAdminMode();
+    });
+
+    const audioToggleButton = document.getElementById('audio-toggle');
+    if (audioToggleButton) {
+        audioToggleButton.textContent = `効果音: ${soundEnabled ? 'ON' : 'OFF'}`;
+    }
+
+    initializeGame();
+</script>
+
+</body>
+</html>
