@@ -18,6 +18,17 @@
             text-align: center;
             margin-bottom: 20px;
         }
+        .youtube-player {
+            width: min(320px, 100%);
+            aspect-ratio: 16 / 9;
+            margin: 0 auto 20px;
+        }
+        .youtube-player iframe {
+            display: block;
+            width: 100%;
+            height: 100%;
+            border: 0;
+        }
         h1 {
             margin: 0 0 10px 0;
             font-size: 24px;
@@ -528,6 +539,17 @@
     <button id="shop-toggle-button" class="shop-toggle-button" onclick="toggleShop()" aria-expanded="false">ショップを表示</button>
     <button id="audio-toggle" class="shop-toggle-button" type="button" onclick="toggleSound()">効果音: ON</button>
 </header>
+
+<section class="youtube-player" aria-label="YouTube動画プレーヤー">
+    <iframe
+        src="https://www.youtube-nocookie.com/embed/oHZDWwW6iXs?playsinline=1&amp;rel=0"
+        title="YouTube動画プレーヤー"
+        loading="lazy"
+        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+        referrerpolicy="strict-origin-when-cross-origin"
+        allowfullscreen>
+    </iframe>
+</section>
 
 <section id="admin-panel" class="admin-panel" aria-labelledby="admin-panel-title" hidden>
     <h2 id="admin-panel-title">管理者モード</h2>
