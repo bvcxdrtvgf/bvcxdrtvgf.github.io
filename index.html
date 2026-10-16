@@ -545,7 +545,7 @@
 
 <section class="youtube-player" aria-label="YouTube動画プレーヤー">
     <iframe
-        src="https://www.youtube.com/embed/0UkRqMFMZic?list=PLKXdyINOQYsb38jn5HGiF6w8X3rph4IIx&amp;index=12&amp;autoplay=1&amp;mute=1&amp;loop=1&amp;playsinline=1&amp;rel=0"
+        src="https://www.youtube.com/embed/0UkRqMFMZic?list=RD0UkRqMFMZic&amp;start_radio=1&amp;autoplay=1&amp;mute=1&amp;loop=1&amp;playsinline=1&amp;rel=0&amp;enablejsapi=1"
         title="YouTube動画プレーヤー"
         loading="eager"
         allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
@@ -553,6 +553,21 @@
         allowfullscreen>
     </iframe>
 </section>
+<script>
+    function onYouTubeIframeAPIReady() {
+        let unmuteTimer;
+        new YT.Player(document.querySelector('.youtube-player iframe'), {
+            events: {
+                onStateChange(event) {
+                    if (event.data === YT.PlayerState.PLAYING && !unmuteTimer) {
+                        unmuteTimer = window.setTimeout(() => event.target.unMute(), 10000);
+                    }
+                }
+            }
+        });
+    }
+</script>
+<script async src="https://www.youtube.com/iframe_api"></script>
 
 <section id="admin-panel" class="admin-panel" aria-labelledby="admin-panel-title" hidden>
     <h2 id="admin-panel-title">管理者モード</h2>
