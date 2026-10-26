@@ -22,9 +22,16 @@
             position: fixed;
             left: 10px;
             bottom: 10px;
-            z-index: 10;
+            z-index: 0;
             width: 200px;
             height: 150px;
+        }
+        header,
+        #admin-panel,
+        #shop,
+        #game-container {
+            position: relative;
+            z-index: 1;
         }
         .youtube-player iframe {
             display: block;
@@ -112,7 +119,9 @@
         .music-options {
             display: grid;
             gap: 8px;
+            max-height: min(55vh, 440px);
             margin: 0 0 18px;
+            overflow-y: auto;
         }
         .music-options button {
             width: 100%;
@@ -516,7 +525,8 @@
     </section>
     <section id="music-tracks" hidden>
         <h3 id="music-category-title"></h3>
-        <p>このジャンルの曲はまだ登録されていません。</p>
+        <div id="music-track-list" class="music-options"></div>
+        <p id="music-empty-message" hidden>このジャンルの曲はまだ登録されていません。</p>
         <button type="button" onclick="showMusicCategories()">ジャンル選択に戻る</button>
     </section>
     <form method="dialog">
@@ -577,7 +587,7 @@
 
 <section class="youtube-player" aria-label="YouTube動画プレーヤー">
     <iframe
-        src="https://www.youtube.com/embed/0UkRqMFMZic?playlist=0UkRqMFMZic&amp;autoplay=1&amp;mute=1&amp;loop=1&amp;playsinline=1&amp;rel=0&amp;enablejsapi=1"
+        src="https://www.youtube.com/embed/0UkRqMFMZic?playsinline=1&amp;rel=0&amp;enablejsapi=1"
         title="YouTube動画プレーヤー"
         loading="eager"
         allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
@@ -586,13 +596,22 @@
     </iframe>
 </section>
 <script>
+    let musicYouTubePlayer = null;
+    let pendingMusicVideoId = null;
+
     function onYouTubeIframeAPIReady() {
-        let unmuteTimer;
-        new YT.Player(document.querySelector('.youtube-player iframe'), {
+        musicYouTubePlayer = new YT.Player(document.querySelector('.youtube-player iframe'), {
             events: {
+                onReady() {
+                    if (pendingMusicVideoId) {
+                        musicYouTubePlayer.loadVideoById(pendingMusicVideoId);
+                        pendingMusicVideoId = null;
+                    }
+                },
                 onStateChange(event) {
-                    if (event.data === YT.PlayerState.PLAYING && !unmuteTimer) {
-                        unmuteTimer = window.setTimeout(() => event.target.unMute(), 10000);
+                    if (event.data === YT.PlayerState.ENDED) {
+                        event.target.seekTo(0, true);
+                        event.target.playVideo();
                     }
                 }
             }
@@ -1373,6 +1392,64 @@
         document.getElementById('music-category-title').textContent = category;
         document.getElementById('music-categories').hidden = true;
         document.getElementById('music-tracks').hidden = false;
+
+        const trackList = document.getElementById('music-track-list');
+        const emptyMessage = document.getElementById('music-empty-message');
+        trackList.replaceChildren();
+        const tracks = musicTracks[category] || [];
+        tracks.forEach(track => {
+            const button = document.createElement('button');
+            button.type = 'button';
+            button.textContent = track.title;
+            button.addEventListener('click', () => playMusicTrack(track.videoId));
+            trackList.append(button);
+        });
+        emptyMessage.hidden = tracks.length > 0;
+    }
+
+    const musicTracks = {
+        'アンダーテール・デルタルーン': [
+            { title: '遺跡', videoId: 'oHZDWwW6iXs' },
+            { title: 'ホーム', videoId: '0UkRqMFMZic' },
+            { title: 'スノーフル', videoId: 'LETChg7kPJo' },
+            { title: 'ウォーターフェル', videoId: 'DVUh7caufKU' },
+            { title: 'ホットランド', videoId: 'NP4sPRIyHKM' },
+            { title: 'コア', videoId: 'SEOYyM9n9mw' },
+            { title: 'ニューホーム', videoId: '1HIKNbnV8nw' },
+            { title: '最後の回廊', videoId: 'Y0gJ4xifIn0' },
+            { title: '「ホームタウン」という名の町', videoId: '2_1JGqBPziI' },
+            { title: 'サイバーワールド', videoId: 'EM8WM9hUFO8' },
+            { title: '楽屋へようこそ', videoId: 'GrCp8AHdgEM' },
+            { title: '金言', videoId: 'JkEhQ3qJubU' },
+            { title: '7つの陽が沈む', videoId: '_Q6S2XgQJ8c' }
+        ],
+        INKTALE: [
+            { title: 'BH!INK', videoId: 'AtjvFUI_uzY' },
+            { title: 'INKJP', videoId: 'fW_0fBTU9V0' }
+        ],
+        DUSTTALE: [
+            { title: 'Dusttale Ruins', videoId: 'rsMKt6H4_Oc' },
+            { title: 'Dusttale Snowdin', videoId: '4RE2Ft_e0T0' },
+            { title: 'Dusttale Waterfall', videoId: 'XFBm-JZrdXw' },
+            { title: 'Dusttale Core', videoId: 'tfdSPZnM1r4' },
+            { title: 'Dusttale Corridor', videoId: 'J7yawuPoH_s' }
+        ],
+        'その他': [
+            { title: 'Fell Sans', videoId: 'o-0KZuvgQnM' },
+            { title: 'Outer Sans', videoId: 'ZzEJbICJXkM' },
+            { title: 'TITR Sans', videoId: 'Meo-g0DYqVQ' },
+            { title: 'Joke aside', videoId: 'WSS_vuZkFs8' },
+            { title: 'Alpha Sans', videoId: 'CuC6SEDeTyk' }
+        ]
+    };
+
+    function playMusicTrack(videoId) {
+        document.getElementById('music-dialog').close();
+        if (musicYouTubePlayer) {
+            musicYouTubePlayer.loadVideoById(videoId);
+        } else {
+            pendingMusicVideoId = videoId;
+        }
     }
 
     function updateShop() {
