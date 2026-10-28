@@ -1786,6 +1786,7 @@
             if (room.status === 'finished') {
                 clearInterval(timerInterval);
                 timerInterval = null;
+                document.getElementById('pause-button').disabled = true;
                 document.getElementById('game-container').inert = true;
                 match.finished = true;
                 const winnerName = room.winner && room.winner.name ? room.winner.name : '対戦相手';
