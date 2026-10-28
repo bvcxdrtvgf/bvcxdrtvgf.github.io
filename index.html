@@ -238,6 +238,30 @@
             flex-wrap: wrap;
             margin-top: 10px;
         }
+        .online-match {
+            max-width: 900px;
+            margin: 12px auto;
+            padding: 12px;
+            border: 2px solid rgba(255,255,255,0.7);
+            border-radius: 8px;
+            text-align: center;
+        }
+        .online-match h2 {
+            margin: 0 0 10px;
+            font-size: 18px;
+        }
+        .online-match-controls {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+        .online-match-status {
+            min-height: 20px;
+            margin: 10px 0 0;
+            font-weight: bold;
+        }
         .admin-panel {
             max-width: 900px;
             margin: 12px auto;
@@ -585,6 +609,20 @@
     <button id="music-button" class="shop-toggle-button" type="button" onclick="openMusicMenu()">音楽</button>
 </header>
 
+<section class="online-match" aria-labelledby="online-match-title">
+    <h2 id="online-match-title">オンライン対戦</h2>
+    <div class="online-match-controls">
+        <label for="online-player-name">名前</label>
+        <input id="online-player-name" class="bet-input" type="text" maxlength="16" autocomplete="nickname" placeholder="プレイヤー名">
+        <button id="online-create-button" type="button" onclick="createOnlineMatch()">部屋を作る</button>
+        <label for="online-room-code">部屋コード</label>
+        <input id="online-room-code" class="bet-input" type="text" maxlength="6" autocomplete="off" placeholder="6桁コード" aria-label="部屋コード">
+        <button id="online-join-button" type="button" onclick="joinOnlineMatch()">部屋に参加</button>
+        <button id="online-leave-button" type="button" onclick="leaveOnlineMatch()" hidden>対戦を終了</button>
+    </div>
+    <p id="online-match-status" class="online-match-status" aria-live="polite"></p>
+</section>
+
 <section class="youtube-player" aria-label="YouTube動画プレーヤー">
     <iframe
         src="https://www.youtube.com/embed/0UkRqMFMZic?playsinline=1&amp;rel=0&amp;enablejsapi=1"
@@ -619,6 +657,9 @@
     }
 </script>
 <script async src="https://www.youtube.com/iframe_api"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-database-compat.js"></script>
 
 <section id="admin-panel" class="admin-panel" aria-labelledby="admin-panel-title" hidden>
     <h2 id="admin-panel-title">管理者モード</h2>
@@ -721,6 +762,18 @@
     const maxUndoHistory = 100;
     let undoHistory = [];
     let localMatch = null;
+    let onlineMatch = null;
+    let onlineFirebaseAuth = null;
+    let onlineFirebaseDatabase = null;
+    let onlineFirebaseUser = null;
+    let onlineRequestPending = false;
+    const onlineFirebaseConfig = {
+        apiKey: 'AIzaSyAa4qtg2gpxOFeag0bak2In0jHuyWYOOk0',
+        authDomain: 'errs-492a3.firebaseapp.com',
+        databaseURL: 'https://errs-492a3-default-rtdb.firebaseio.com/',
+        projectId: 'errs-492a3',
+        appId: '1:891903003127:web:6091e17dd1d7ad76d1c6f2'
+    };
     let soundEnabled = localStorage.getItem('solitaire-sound-enabled') !== 'false';
     let audioContext = null;
     let adminModeEnabled = false;
@@ -1524,6 +1577,14 @@
         };
     }
 
+    function createSeededRandom(seed) {
+        let state = Number(seed) >>> 0;
+        return () => {
+            state = (Math.imul(state, 1664525) + 1013904223) >>> 0;
+            return state / 4294967296;
+        };
+    }
+
     function dealDeck(cards) {
         gameState.stock = [];
         gameState.waste = [];
@@ -1639,13 +1700,292 @@
                 deck.push({ suit: s, rank: r, rankStr: ranks[r], faceUp: false });
             }
         }
-        const random = currentGameMode === 'daily' ? createDailyRandom(today) : Math.random;
+        const random = onlineMatch && onlineMatch.started
+            ? createSeededRandom(onlineMatch.seed)
+            : currentGameMode === 'daily' ? createDailyRandom(today) : Math.random;
         dealDeck(shuffleDeck(deck, random));
         if (currentGameMode === 'daily') localStorage.setItem('solitaire-daily-mode-date', today);
 
         render();
         updateStats();
         startGameTimer();
+    }
+
+    async function getOnlineFirebaseUser() {
+        if (!window.firebase) {
+            throw new Error('Firebase SDKを読み込めません。インターネット接続を確認してください。');
+        }
+        if (!firebase.apps.length) firebase.initializeApp(onlineFirebaseConfig);
+        onlineFirebaseAuth = firebase.auth();
+        onlineFirebaseDatabase = firebase.database();
+        if (onlineFirebaseAuth.currentUser) {
+            onlineFirebaseUser = onlineFirebaseAuth.currentUser;
+        } else {
+            const credential = await onlineFirebaseAuth.signInAnonymously();
+            onlineFirebaseUser = credential.user;
+        }
+        return onlineFirebaseUser;
+    }
+
+    function setOnlineMatchControls(active) {
+        const localMatchActive = Boolean(localMatch && !localMatch.finished);
+        document.getElementById('difficulty').disabled = active || localMatchActive;
+        document.getElementById('game-mode').disabled = active || localMatchActive;
+        document.getElementById('bet-amount').disabled = active || adminCountersFixed || localMatchActive;
+        document.getElementById('match-player-count').disabled = active || localMatchActive;
+        document.getElementById('match-button').disabled = active || localMatchActive;
+        document.getElementById('reset-button').disabled = active || currentGameMode === 'daily' || localMatchActive;
+        document.getElementById('online-player-name').disabled = active;
+        document.getElementById('online-room-code').readOnly = active;
+        document.getElementById('online-create-button').disabled = active || onlineRequestPending;
+        document.getElementById('online-join-button').disabled = active || onlineRequestPending;
+        document.getElementById('online-leave-button').hidden = !active;
+        document.getElementById('pause-button').disabled = active && !onlineMatch?.started
+            ? true
+            : modeFailed || gameWon;
+    }
+
+    function makeOnlineRoomCode() {
+        const alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+        const randomValues = new Uint32Array(6);
+        crypto.getRandomValues(randomValues);
+        return [...randomValues].map(value => alphabet[value % alphabet.length]).join('');
+    }
+
+    function pauseGameForOnlineLobby() {
+        const wasTimerRunning = timerInterval !== null;
+        clearInterval(timerInterval);
+        timerInterval = null;
+        clearTimeout(idleHintTimeout);
+        saveCurrentGame();
+        document.getElementById('game-container').inert = true;
+        return wasTimerRunning;
+    }
+
+    function listenToOnlineRoom(match) {
+        match.listener = snapshot => {
+            if (!onlineMatch || onlineMatch !== match) return;
+            if (!snapshot.exists()) {
+                document.getElementById('online-match-status').textContent = '部屋が終了しました。';
+                return;
+            }
+            const room = snapshot.val();
+            if (room.status === 'waiting') {
+                document.getElementById('online-match-status').textContent =
+                    `部屋コード ${match.roomCode} を対戦相手に共有してください。参加を待っています。`;
+                return;
+            }
+            if (room.status === 'playing' && !match.started) {
+                if (!['easy', 'normal', 'hard', 'new'].includes(room.difficulty) || !Number.isInteger(Number(room.seed))) {
+                    document.getElementById('online-match-status').textContent = '部屋のゲーム設定が不正です。対戦を終了してください。';
+                    return;
+                }
+                startOnlineMatchGame(match, room);
+                return;
+            }
+            if (room.status === 'finished') {
+                clearInterval(timerInterval);
+                timerInterval = null;
+                document.getElementById('game-container').inert = true;
+                match.finished = true;
+                const winnerName = room.winner && room.winner.name ? room.winner.name : '対戦相手';
+                const localWon = room.winner && room.winner.uid === match.uid;
+                document.getElementById('online-match-status').textContent =
+                    localWon ? `あなた（${match.name}）の勝ちです！` : `${winnerName}の勝ちです。`;
+                const results = document.getElementById('match-results');
+                results.textContent = `オンライン対戦結果: ${localWon ? `${match.name}の勝ち` : `${winnerName}の勝ち`}`;
+                results.hidden = false;
+                return;
+            }
+            if (room.status === 'cancelled') {
+                document.getElementById('online-match-status').textContent = '対戦相手が部屋を終了しました。';
+            }
+        };
+        match.roomRef.on('value', match.listener, error => {
+            document.getElementById('online-match-status').textContent = `部屋の同期に失敗しました: ${error.message}`;
+        });
+    }
+
+    function startOnlineMatchGame(match, room) {
+        match.started = true;
+        match.seed = Number(room.seed);
+        match.difficulty = room.difficulty;
+        document.getElementById('difficulty').value = match.difficulty;
+        document.getElementById('game-mode').value = 'classic';
+        document.getElementById('bet-amount').value = 0;
+        document.getElementById('game-container').inert = false;
+        setOnlineMatchControls(true);
+        document.getElementById('match-results').hidden = true;
+        document.getElementById('online-match-status').textContent =
+            `対戦中: ${match.name} vs ${room.host.name === match.name && room.host.uid === match.uid ? room.guest.name : room.host.name}`;
+        initGame();
+    }
+
+    async function createOnlineMatch() {
+        const status = document.getElementById('online-match-status');
+        if (onlineMatch || onlineRequestPending) return;
+        if (localMatch && !localMatch.finished) {
+            status.textContent = 'ローカル対戦を終了してからオンライン対戦を始めてください。';
+            return;
+        }
+        if (isPaused) {
+            status.textContent = '一時停止を解除してからオンライン対戦を始めてください。';
+            return;
+        }
+        const name = document.getElementById('online-player-name').value.trim();
+        if (!name) {
+            status.textContent = 'プレイヤー名を入力してください。';
+            return;
+        }
+        status.textContent = '部屋を作成しています...';
+        onlineRequestPending = true;
+        setOnlineMatchControls(false);
+        try {
+            const user = await getOnlineFirebaseUser();
+            let roomCode = '';
+            let roomRef = null;
+            let created = false;
+            for (let attempt = 0; attempt < 5 && !created; attempt++) {
+                roomCode = makeOnlineRoomCode();
+                roomRef = onlineFirebaseDatabase.ref(`solitaireOnlineRooms/${roomCode}`);
+                const result = await roomRef.transaction(currentRoom => {
+                    if (currentRoom !== null) return;
+                    return {
+                        status: 'waiting',
+                        seed: crypto.getRandomValues(new Uint32Array(1))[0],
+                        difficulty: document.getElementById('difficulty').value,
+                        host: { uid: user.uid, name },
+                        guest: null,
+                        winner: null,
+                        createdAt: Date.now()
+                    };
+                });
+                created = result.committed;
+            }
+            if (!created) throw new Error('部屋コードを確保できませんでした。もう一度お試しください。');
+            document.getElementById('online-room-code').value = roomCode;
+            onlineMatch = {
+                roomCode,
+                roomRef,
+                uid: user.uid,
+                name,
+                role: 'host',
+                started: false,
+                finished: false,
+                wasTimerRunning: pauseGameForOnlineLobby(),
+                listener: null
+            };
+            setOnlineMatchControls(true);
+            listenToOnlineRoom(onlineMatch);
+        } catch (error) {
+            status.textContent = `部屋を作成できませんでした: ${error.message}`;
+        } finally {
+            onlineRequestPending = false;
+            setOnlineMatchControls(Boolean(onlineMatch));
+        }
+    }
+
+    async function joinOnlineMatch() {
+        const status = document.getElementById('online-match-status');
+        if (onlineMatch || onlineRequestPending) return;
+        if (localMatch && !localMatch.finished) {
+            status.textContent = 'ローカル対戦を終了してからオンライン対戦に参加してください。';
+            return;
+        }
+        if (isPaused) {
+            status.textContent = '一時停止を解除してからオンライン対戦に参加してください。';
+            return;
+        }
+        const name = document.getElementById('online-player-name').value.trim();
+        const roomCode = document.getElementById('online-room-code').value.trim().toUpperCase();
+        if (!name) {
+            status.textContent = 'プレイヤー名を入力してください。';
+            return;
+        }
+        if (!/^[A-HJ-NP-Z2-9]{6}$/.test(roomCode)) {
+            status.textContent = '6桁の部屋コードを入力してください。';
+            return;
+        }
+        status.textContent = '部屋に参加しています...';
+        onlineRequestPending = true;
+        setOnlineMatchControls(false);
+        try {
+            const user = await getOnlineFirebaseUser();
+            const roomRef = onlineFirebaseDatabase.ref(`solitaireOnlineRooms/${roomCode}`);
+            const result = await roomRef.transaction(room => {
+                if (!room || room.status !== 'waiting' || room.guest || room.host.uid === user.uid) return;
+                room.guest = { uid: user.uid, name };
+                room.status = 'playing';
+                return room;
+            });
+            if (!result.committed) {
+                status.textContent = '部屋が見つからないか、すでに対戦が始まっています。コードを確認してください。';
+                return;
+            }
+            onlineMatch = {
+                roomCode,
+                roomRef,
+                uid: user.uid,
+                name,
+                role: 'guest',
+                started: false,
+                finished: false,
+                wasTimerRunning: pauseGameForOnlineLobby(),
+                listener: null
+            };
+            setOnlineMatchControls(true);
+            listenToOnlineRoom(onlineMatch);
+        } catch (error) {
+            status.textContent = `部屋に参加できませんでした: ${error.message}`;
+        } finally {
+            onlineRequestPending = false;
+            setOnlineMatchControls(Boolean(onlineMatch));
+        }
+    }
+
+    async function reportOnlineMatchWin(match) {
+        try {
+            const result = await match.roomRef.transaction(room => {
+                if (!room || room.status !== 'playing' || room.winner) return;
+                room.status = 'finished';
+                room.winner = {
+                    uid: match.uid,
+                    name: match.name,
+                    elapsedSeconds,
+                    finishedAt: Date.now()
+                };
+                return room;
+            });
+            if (!result.committed) {
+                document.getElementById('online-match-status').textContent = '勝利を同期できませんでした。部屋が終了している可能性があります。';
+            }
+        } catch (error) {
+            document.getElementById('online-match-status').textContent = `勝利の同期に失敗しました: ${error.message}`;
+        }
+    }
+
+    async function leaveOnlineMatch() {
+        const match = onlineMatch;
+        if (!match) return;
+        onlineMatch = null;
+        match.roomRef.off('value', match.listener);
+        try {
+            if (match.role === 'host') {
+                await match.roomRef.remove();
+            } else if (!match.finished) {
+                await match.roomRef.transaction(room => {
+                    if (!room || !room.guest || room.guest.uid !== match.uid) return;
+                    room.status = 'cancelled';
+                    return room;
+                });
+            }
+        } catch (error) {
+            document.getElementById('online-match-status').textContent = `部屋の終了処理に失敗しました: ${error.message}`;
+        }
+        setOnlineMatchControls(false);
+        document.getElementById('game-container').inert = false;
+        document.getElementById('online-match-status').textContent = 'オンライン対戦を終了しました。';
+        if (match.wasTimerRunning && !gameWon && !match.finished) startGameTimer();
     }
 
     function handleLocalMatchButton() {
@@ -2164,6 +2504,11 @@
             saveRecentSpeedRecord();
             saveAchievements();
             updateStats();
+            if (onlineMatch && onlineMatch.started) {
+                reportOnlineMatchWin(onlineMatch);
+                saveCurrentGame();
+                return;
+            }
             if (localMatch && !localMatch.finished) {
                 localMatch.results.push({ player: localMatch.currentPlayer, seconds: elapsedSeconds });
                 clearUndoHistory();
