@@ -1416,9 +1416,11 @@
                     : currentGameMode === 'timed'
                         ? (modeFailed ? '時間切れ' : '制限時間: 5分')
                         : '';
-        document.getElementById('reset-button').disabled = currentGameMode === 'daily' || Boolean(localMatch && !localMatch.finished);
-        document.getElementById('bet-amount').disabled = adminCountersFixed || Boolean(localMatch && !localMatch.finished);
-        document.getElementById('pause-button').disabled = modeFailed || gameWon;
+        const matchActive = Boolean((localMatch && !localMatch.finished) || onlineMatch);
+        document.getElementById('reset-button').disabled = currentGameMode === 'daily' || matchActive;
+        document.getElementById('bet-amount').disabled = adminCountersFixed || matchActive;
+        document.getElementById('pause-button').disabled = modeFailed || gameWon
+            || Boolean(onlineMatch && !onlineMatch.started);
         updateShop();
         renderAchievements();
     }
@@ -1766,6 +1768,10 @@
         match.listener = snapshot => {
             if (!onlineMatch || onlineMatch !== match) return;
             if (!snapshot.exists()) {
+                clearInterval(timerInterval);
+                timerInterval = null;
+                document.getElementById('pause-button').disabled = true;
+                document.getElementById('game-container').inert = true;
                 document.getElementById('online-match-status').textContent = '部屋が終了しました。';
                 return;
             }
@@ -1799,6 +1805,10 @@
                 return;
             }
             if (room.status === 'cancelled') {
+                clearInterval(timerInterval);
+                timerInterval = null;
+                document.getElementById('pause-button').disabled = true;
+                document.getElementById('game-container').inert = true;
                 document.getElementById('online-match-status').textContent = '対戦相手が部屋を終了しました。';
             }
         };
