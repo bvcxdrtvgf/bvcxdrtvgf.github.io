@@ -32,9 +32,17 @@
         body.poker-mode #shop,
         body.poker-mode #game-container,
         body.poker-mode .online-match,
-        body.poker-mode .youtube-player,
         body.poker-mode .help-button {
             display: none;
+        }
+        body.poker-mode .youtube-player {
+            position: fixed;
+            right: 12px;
+            bottom: 12px;
+            left: auto;
+            z-index: 3;
+            width: min(160px, calc(100vw - 24px));
+            height: 120px;
         }
         .start-menu {
             width: min(680px, 100%);
@@ -160,6 +168,33 @@
             min-height: 24px;
             margin: 12px 0;
             font-weight: bold;
+        }
+        .poker-help {
+            margin: 18px auto;
+            max-width: 760px;
+            padding: 12px 16px;
+            border: 1px solid rgba(255,255,255,0.55);
+            border-radius: 8px;
+            background: rgba(0,0,0,0.16);
+            text-align: left;
+        }
+        .poker-help summary {
+            cursor: pointer;
+            font-weight: bold;
+            text-align: center;
+        }
+        .poker-help h2 {
+            margin: 16px 0 8px;
+            font-size: 1.1em;
+        }
+        .poker-help p {
+            margin: 8px 0;
+        }
+        .poker-hand-ranks {
+            padding-left: 1.6em;
+        }
+        .poker-hand-ranks li {
+            margin: 5px 0;
         }
         .poker-controls {
             display: flex;
@@ -673,6 +708,7 @@
 <main id="poker-screen" class="poker-screen" aria-labelledby="poker-title" hidden>
     <h1 id="poker-title">テキサスホールデム</h1>
     <p>2〜9人で対戦。開始1,000チップ、SB 10 / BB 20。チップが0になると脱落します。ホストは対戦中接続を維持してください。</p>
+    <p>ソリティアで解放・選択中のキャラカードを使用します。キャラカードの解放と切り替えはソリティアのショップで行えます。</p>
     <div class="poker-lobby">
         <label for="poker-player-name">名前</label>
         <input id="poker-player-name" class="bet-input" type="text" maxlength="16" autocomplete="nickname" placeholder="プレイヤー名">
@@ -682,6 +718,7 @@
         <button id="poker-join-button" type="button" onclick="joinPokerRoom()">参加</button>
         <button id="poker-start-button" type="button" onclick="startPokerTournament()" hidden>対戦開始</button>
         <button id="poker-leave-button" type="button" onclick="leavePokerRoom()" hidden>部屋を退出</button>
+        <button class="shop-toggle-button" type="button" onclick="openMusicMenu()">音楽</button>
     </div>
     <section class="poker-table" aria-label="ポーカーテーブル">
         <div id="poker-players" class="poker-players"></div>
@@ -689,6 +726,36 @@
         <div id="poker-board" class="poker-board" aria-label="コミュニティカード"></div>
         <div id="poker-player-hand" class="poker-hand" aria-label="自分のホールカード"></div>
     </section>
+    <details class="poker-help">
+        <summary>テキサスホールデムのルールと役を見る</summary>
+        <section aria-labelledby="poker-rules-title">
+            <h2 id="poker-rules-title">ゲームの進め方</h2>
+            <ol>
+                <li>各プレイヤーに伏せたカードが2枚配られ、順番にチップを賭けます。ディーラーボタンの次がSB（10チップ）、その次がBB（20チップ）です。</li>
+                <li>場に共通カードが3枚（フロップ）、1枚（ターン）、さらに1枚（リバー）の順に公開されます。各公開後にベッティングを行います。</li>
+                <li>自分の手番では、ベット額に合わせて「チェック / コール」、最小レイズ額以上を上乗せする「レイズ」、または勝負を降りる「フォールド」を選びます。誰かがベットしていない場合のチェックは、チップを追加せずに順番を進めます。</li>
+                <li>最後まで複数人が残ったら、手札2枚と場札5枚の計7枚から最も強い5枚の役を比べます。途中で他の全員がフォールドした場合は、残った人がポットを獲得します。</li>
+                <li>同じ強さならポットを分けます。チップが0になった人は脱落し、最後に残った人がトーナメント優勝です。</li>
+            </ol>
+            <p>レイズ額には、コールに必要な額とは別に「上乗せする額」を入力してください。最低レイズ額は画面に表示されます。手持ちチップが足りない場合はレイズできません。</p>
+        </section>
+        <section aria-labelledby="poker-hands-title">
+            <h2 id="poker-hands-title">役の強さ（上から強い順）</h2>
+            <ol class="poker-hand-ranks">
+                <li><strong>ロイヤルフラッシュ</strong> — 同じマークの10・J・Q・K・A</li>
+                <li><strong>ストレートフラッシュ</strong> — 同じマークで数字が5枚連続</li>
+                <li><strong>フォーカード</strong> — 同じ数字が4枚</li>
+                <li><strong>フルハウス</strong> — スリーカードとワンペアの組み合わせ</li>
+                <li><strong>フラッシュ</strong> — 同じマークが5枚（数字は連続しなくてよい）</li>
+                <li><strong>ストレート</strong> — マークに関係なく数字が5枚連続。A・2・3・4・5もストレートです</li>
+                <li><strong>スリーカード</strong> — 同じ数字が3枚</li>
+                <li><strong>ツーペア</strong> — ワンペアが2組</li>
+                <li><strong>ワンペア</strong> — 同じ数字が2枚</li>
+                <li><strong>ハイカード</strong> — 上記の役がない場合。数字の高いカードで比べます</li>
+            </ol>
+            <p>同じ役同士は、役を作る数字と残りのカード（キッカー）の高さを順に比べます。それも同じなら引き分けです。</p>
+        </section>
+    </details>
     <p id="poker-status" class="poker-status" aria-live="polite">部屋を作るか、部屋コードで参加してください。</p>
     <div id="poker-actions" class="poker-controls" hidden>
         <button id="poker-check-call-button" type="button" onclick="actPoker('call')">チェック / コール</button>

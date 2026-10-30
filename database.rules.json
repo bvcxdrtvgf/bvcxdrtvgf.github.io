@@ -11,8 +11,7 @@
       "$roomCode": {
         "public": {
           ".read": "auth != null",
-          ".write": "auth != null && ((!data.exists() && newData.child('hostUid').val() === auth.uid && newData.child('status').val() === 'waiting' && newData.child('players').numChildren() === 1) || (data.exists() && data.child('players').child(auth.uid).exists()) || (data.exists() && data.child('status').val() === 'waiting' && !data.child('players').child(auth.uid).exists() && newData.child('players').child(auth.uid).exists() && newData.child('status').val() === 'waiting' && newData.child('hostUid').val() === data.child('hostUid').val() && data.child('players').numChildren() < 9))",
-          ".validate": "!newData.exists() || (newData.hasChildren(['hostUid', 'hostName', 'status', 'players', 'playerOrder']) && newData.child('hostUid').isString() && (!data.exists() || newData.child('hostUid').val() === data.child('hostUid').val()) && newData.child('hostName').isString() && newData.child('hostName').val().length > 0 && newData.child('hostName').val().length <= 16 && newData.child('status').val().matches(/^(waiting|playing|finished)$/) && newData.child('players').numChildren() <= 9 && newData.child('playerOrder').numChildren() <= 9)"
+          ".write": "auth != null && ((!data.exists() && newData.child('hostUid').val() === auth.uid && newData.child('status').val() === 'waiting') || data.child('players').child(auth.uid).exists() || (data.child('status').val() === 'waiting' && !data.child('players').child(auth.uid).exists() && newData.child('players').child(auth.uid).exists() && newData.child('hostUid').val() === data.child('hostUid').val()))"
         },
         "private": {
           "$uid": {
