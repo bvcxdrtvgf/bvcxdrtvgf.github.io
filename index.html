@@ -14,6 +14,166 @@
             user-select: none;
             overflow-x: hidden;
         }
+        .start-screen {
+            position: fixed;
+            inset: 0;
+            z-index: 1000;
+            display: grid;
+            place-items: center;
+            padding: 24px;
+            overflow-y: auto;
+            background: #288808;
+        }
+        .start-screen[hidden] {
+            display: none;
+        }
+        body.poker-mode header,
+        body.poker-mode #admin-panel,
+        body.poker-mode #shop,
+        body.poker-mode #game-container,
+        body.poker-mode .online-match,
+        body.poker-mode .youtube-player,
+        body.poker-mode .help-button {
+            display: none;
+        }
+        .start-menu {
+            width: min(680px, 100%);
+            text-align: center;
+        }
+        .start-menu h1 {
+            margin: 0 0 10px;
+            font-size: clamp(28px, 6vw, 42px);
+        }
+        .start-menu p {
+            margin: 0 0 24px;
+        }
+        .game-options {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 14px;
+        }
+        .game-option {
+            min-height: 120px;
+            padding: 18px;
+            font-size: 19px;
+        }
+        .game-option span {
+            display: block;
+            margin-top: 8px;
+            font-size: 13px;
+            font-weight: normal;
+        }
+        .game-option:disabled {
+            opacity: 0.72;
+            cursor: not-allowed;
+        }
+        .game-option:disabled:hover {
+            background-color: #1b5e20;
+            color: white;
+        }
+        .poker-screen {
+            position: relative;
+            z-index: 1;
+            max-width: 900px;
+            margin: 24px auto;
+            padding: 20px;
+            border: 2px solid rgba(255,255,255,0.7);
+            border-radius: 8px;
+            background: rgba(0,0,0,0.12);
+            text-align: center;
+        }
+        .poker-screen h1,
+        .poker-screen h2 {
+            margin: 0 0 16px;
+        }
+        .poker-lobby {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 8px;
+            flex-wrap: wrap;
+            margin-bottom: 18px;
+        }
+        .poker-table {
+            margin: 18px auto;
+            padding: 14px;
+            border: 2px solid rgba(255,255,255,0.65);
+            border-radius: 12px;
+            background: rgba(0,0,0,0.12);
+        }
+        .poker-players {
+            display: flex;
+            justify-content: center;
+            gap: 8px;
+            flex-wrap: wrap;
+            margin-bottom: 14px;
+        }
+        .poker-player {
+            min-width: 120px;
+            padding: 8px 12px;
+            border: 1px solid rgba(255,255,255,0.55);
+            border-radius: 6px;
+        }
+        .poker-player.current-turn {
+            border-color: #ffe082;
+            box-shadow: 0 0 0 2px #ffe082;
+        }
+        .poker-player.folded {
+            opacity: 0.55;
+            text-decoration: line-through;
+        }
+        .poker-board {
+            display: flex;
+            justify-content: center;
+            gap: 8px;
+            min-height: 138px;
+            flex-wrap: wrap;
+        }
+        .poker-pot {
+            margin: 12px 0;
+            font-size: 18px;
+            font-weight: bold;
+        }
+        .poker-hand {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin: 12px 0 20px;
+        }
+        .poker-hand .card {
+            position: relative;
+            flex: 0 0 90px;
+            cursor: default;
+        }
+        .poker-hand .card[aria-pressed="false"] {
+            transform: translateY(10px);
+            opacity: 0.68;
+        }
+        .poker-hand .card.selectable {
+            cursor: pointer;
+        }
+        .poker-hand .card.selectable:hover {
+            outline: 3px solid #ffd54f;
+        }
+        .poker-status {
+            min-height: 24px;
+            margin: 12px 0;
+            font-weight: bold;
+        }
+        .poker-controls {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        .poker-controls[hidden],
+        .poker-lobby [hidden] {
+            display: none;
+        }
+        .poker-screen[hidden] {
+            display: none;
+        }
         header {
             text-align: center;
             margin-bottom: 20px;
@@ -489,6 +649,57 @@
 </head>
 <body>
 
+<main id="start-screen" class="start-screen" aria-labelledby="start-screen-title">
+    <div class="start-menu">
+        <h1 id="start-screen-title">ゲームを選択</h1>
+        <p>遊びたいゲームを選んでください。</p>
+        <div class="game-options">
+            <button class="game-option" type="button" onclick="startSolitaire()">
+                ソリティア
+                <span>今すぐプレイ</span>
+            </button>
+            <button class="game-option" type="button" onclick="startPoker()">
+                ポーカー
+                <span>テキサスホールデム・オンライン対戦</span>
+            </button>
+            <button class="game-option" type="button" disabled>
+                ブラックジャック
+                <span>近日公開</span>
+            </button>
+        </div>
+    </div>
+</main>
+
+<main id="poker-screen" class="poker-screen" aria-labelledby="poker-title" hidden>
+    <h1 id="poker-title">テキサスホールデム</h1>
+    <p>2〜9人で対戦。開始1,000チップ、SB 10 / BB 20。チップが0になると脱落します。ホストは対戦中接続を維持してください。</p>
+    <div class="poker-lobby">
+        <label for="poker-player-name">名前</label>
+        <input id="poker-player-name" class="bet-input" type="text" maxlength="16" autocomplete="nickname" placeholder="プレイヤー名">
+        <button id="poker-create-button" type="button" onclick="createPokerRoom()">部屋を作る</button>
+        <label for="poker-room-code">部屋コード</label>
+        <input id="poker-room-code" class="bet-input" type="text" maxlength="6" autocomplete="off" placeholder="6桁コード" aria-label="ポーカー部屋コード">
+        <button id="poker-join-button" type="button" onclick="joinPokerRoom()">参加</button>
+        <button id="poker-start-button" type="button" onclick="startPokerTournament()" hidden>対戦開始</button>
+        <button id="poker-leave-button" type="button" onclick="leavePokerRoom()" hidden>部屋を退出</button>
+    </div>
+    <section class="poker-table" aria-label="ポーカーテーブル">
+        <div id="poker-players" class="poker-players"></div>
+        <p id="poker-pot" class="poker-pot"></p>
+        <div id="poker-board" class="poker-board" aria-label="コミュニティカード"></div>
+        <div id="poker-player-hand" class="poker-hand" aria-label="自分のホールカード"></div>
+    </section>
+    <p id="poker-status" class="poker-status" aria-live="polite">部屋を作るか、部屋コードで参加してください。</p>
+    <div id="poker-actions" class="poker-controls" hidden>
+        <button id="poker-check-call-button" type="button" onclick="actPoker('call')">チェック / コール</button>
+        <label for="poker-raise-amount">レイズ額</label>
+        <input id="poker-raise-amount" class="bet-input" type="number" min="20" step="20" value="20">
+        <button id="poker-raise-button" type="button" onclick="actPoker('raise')">レイズ</button>
+        <button type="button" onclick="actPoker('fold')">フォールド</button>
+    </div>
+    <button type="button" onclick="returnToStartScreen()">ゲーム選択に戻る</button>
+</main>
+
 <button class="help-button" type="button" onclick="document.getElementById('help-dialog').showModal()" aria-label="ソリティアの操作説明" title="操作説明">i</button>
 <dialog id="help-dialog" class="help-dialog" aria-labelledby="help-title">
     <h2 id="help-title">ソリティアの遊び方</h2>
@@ -729,6 +940,27 @@
         { name: 'S', char: '♠', color: 'black' }
     ];
     const ranks = ['A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K'];
+    const characterImages = [
+        { name: 'エルフィン', src: 'img/エルフィン.png' },
+        { name: 'ヴィヴィ', src: 'img/ヴィヴィ.png' },
+        { name: 'クロエ', src: 'img/クロエ.png' },
+        { name: 'シオン', src: 'img/シオン.png' },
+        { name: 'イード', src: 'img/イード.png' },
+        { name: 'エピカ', src: 'img/エピカ.png' },
+        { name: 'ウイ', src: 'img/ウイ.png' },
+        { name: 'アヤ', src: 'img/アヤ.png' },
+        { name: 'ヨミ', src: 'img/ヨミ.png' },
+        { name: 'リニュア', src: 'img/リニュア.png' },
+        { name: 'ネル', src: 'img/ネル.png' },
+        { name: 'ベリータ', src: 'img/ベリータ.png' },
+        { name: 'ジョアン', src: 'img/ジョアン.png' }
+    ];
+    const characterCardTwoImages = [
+        { name: 'サヨリ', src: 'img/chibi-sayori.png' },
+        { name: 'ナツキ', src: 'img/chibi-natsuki.png' },
+        { name: 'ユリ', src: 'img/chibi-yuri.png' },
+        { name: 'モニカ', src: 'img/chibi-monika.png' }
+    ];
 
     let deck = [];
     let gameState = {
@@ -763,10 +995,14 @@
     let undoHistory = [];
     let localMatch = null;
     let onlineMatch = null;
+    let onlinePokerRoom = null;
+    let pokerDealerBusy = false;
+    let pokerDealerTimer = null;
     let onlineFirebaseAuth = null;
     let onlineFirebaseDatabase = null;
     let onlineFirebaseUser = null;
     let onlineRequestPending = false;
+    let gameStarted = false;
     const onlineFirebaseConfig = {
         apiKey: 'AIzaSyAa4qtg2gpxOFeag0bak2In0jHuyWYOOk0',
         authDomain: 'errs-492a3.firebaseapp.com',
@@ -780,6 +1016,14 @@
     let adminCountersFixed = localStorage.getItem('solitaire-counters-fixed') === 'true';
     let adminTimeSpeed = 1;
     const adminAccessCode = '스피키 누르지 마세요';
+
+    function getCharacterMark(card) {
+        if (!characterMarksEnabled) return '';
+        const character = characterCardSet === 2
+            ? characterCardTwoImages[card.rank % characterCardTwoImages.length]
+            : characterImages[card.rank];
+        return `<img class="suit-large" src="${character.src.normalize('NFD')}" alt="${character.name}">`;
+    }
 
     const achievementDefinitions = [
         { id: 'first-victory', title: 'First victory!', condition: '初めて勝利すると獲得', qualifies: () => totalWins >= 1 },
@@ -2164,34 +2408,8 @@
         }
 
         cardDiv.classList.add(card.suit.color);
-        const characterImages = [
-            { name: 'エルフィン', src: 'img/エルフィン.png' },
-            { name: 'ヴィヴィ', src: 'img/ヴィヴィ.png' },
-            { name: 'クロエ', src: 'img/クロエ.png' },
-            { name: 'シオン', src: 'img/シオン.png' },
-            { name: 'イード', src: 'img/イード.png' },
-            { name: 'エピカ', src: 'img/エピカ.png' },
-            { name: 'ウイ', src: 'img/ウイ.png' },
-            { name: 'アヤ', src: 'img/アヤ.png' },
-            { name: 'ヨミ', src: 'img/ヨミ.png' },
-            { name: 'リニュア', src: 'img/リニュア.png' },
-            { name: 'ネル', src: 'img/ネル.png' },
-            { name: 'ベリータ', src: 'img/ベリータ.png' },
-            { name: 'ジョアン', src: 'img/ジョアン.png' }
-        ];
-        const character = characterImages[card.rank];
-        const characterCardTwoImages = [
-            { name: 'サヨリ', src: 'img/chibi-sayori.png' },
-            { name: 'ナツキ', src: 'img/chibi-natsuki.png' },
-            { name: 'ユリ', src: 'img/chibi-yuri.png' },
-            { name: 'モニカ', src: 'img/chibi-monika.png' }
-        ];
-        const selectedCharacter = characterCardSet === 2
-            ? characterCardTwoImages[card.rank % characterCardTwoImages.length]
-            : character;
-        const mark = characterMarksEnabled
-            ? `<img class="suit-large" src="${selectedCharacter.src.normalize('NFD')}" alt="${selectedCharacter.name}">`
-            : `<span class="suit-large suit-symbol">${card.suit.char}</span>`;
+        const characterMark = getCharacterMark(card);
+        const mark = characterMark || `<span class="suit-large suit-symbol">${card.suit.char}</span>`;
         cardDiv.innerHTML = `
             <div class="card-corner top-left">${card.rankStr}<span>${card.suit.char}</span></div>
             ${mark}
@@ -2583,7 +2801,803 @@
         audioToggleButton.textContent = `効果音: ${soundEnabled ? 'ON' : 'OFF'}`;
     }
 
-    initializeGame();
+    function setGameContentInert(inert) {
+        [...document.body.children].forEach(element => {
+            if (element.id !== 'start-screen' && element.tagName !== 'SCRIPT') {
+                element.inert = inert;
+            }
+        });
+    }
+
+    function startSolitaire() {
+        if (gameStarted) return;
+        gameStarted = true;
+        document.body.classList.remove('poker-mode');
+        document.getElementById('poker-screen').hidden = true;
+        document.getElementById('start-screen').hidden = true;
+        setGameContentInert(false);
+        initializeGame();
+    }
+
+    function startPoker() {
+        if (gameStarted) return;
+        gameStarted = true;
+        document.getElementById('start-screen').hidden = true;
+        document.body.classList.add('poker-mode');
+        document.getElementById('poker-screen').hidden = false;
+        setGameContentInert(false);
+        document.getElementById('poker-player-name').value =
+            localStorage.getItem('poker-player-name') || '';
+        document.getElementById('poker-players').replaceChildren();
+        document.getElementById('poker-board').replaceChildren();
+        document.getElementById('poker-player-hand').replaceChildren();
+        document.getElementById('poker-pot').textContent = 'ポット: 0 チップ';
+        document.getElementById('poker-actions').hidden = true;
+        setPokerStatus('部屋を作るか、部屋コードで参加してください。');
+    }
+
+    function returnToStartScreen() {
+        if (onlinePokerRoom) leavePokerRoom();
+        gameStarted = false;
+        document.body.classList.remove('poker-mode');
+        document.getElementById('poker-screen').hidden = true;
+        document.getElementById('start-screen').hidden = false;
+        setGameContentInert(true);
+    }
+
+    function evaluatePokerHand(hand) {
+        const values = hand.map(card => card.rank === 0 ? 14 : card.rank + 1).sort((a, b) => b - a);
+        const counts = new Map();
+        values.forEach(value => counts.set(value, (counts.get(value) || 0) + 1));
+        const groups = [...counts.entries()].sort((first, second) =>
+            second[1] - first[1] || second[0] - first[0]);
+        const uniqueValues = [...new Set(values)].sort((a, b) => a - b);
+        const wheelStraight = uniqueValues.join(',') === '2,3,4,5,14';
+        const straight = uniqueValues.length === 5 && (uniqueValues[4] - uniqueValues[0] === 4 || wheelStraight);
+        const straightHigh = wheelStraight ? 5 : values[0];
+        const flush = hand.every(card => card.suit.name === hand[0].suit.name);
+
+        if (straight && flush) return { rank: 8, tieBreak: [straightHigh], name: 'ストレートフラッシュ' };
+        if (groups[0][1] === 4) return { rank: 7, tieBreak: [groups[0][0], groups[1][0]], name: 'フォーカード' };
+        if (groups[0][1] === 3 && groups[1][1] === 2) return { rank: 6, tieBreak: [groups[0][0], groups[1][0]], name: 'フルハウス' };
+        if (flush) return { rank: 5, tieBreak: values, name: 'フラッシュ' };
+        if (straight) return { rank: 4, tieBreak: [straightHigh], name: 'ストレート' };
+        if (groups[0][1] === 3) return { rank: 3, tieBreak: [groups[0][0], ...groups.slice(1).map(group => group[0]).sort((a, b) => b - a)], name: 'スリーカード' };
+        if (groups[0][1] === 2 && groups[1][1] === 2) return { rank: 2, tieBreak: [Math.max(groups[0][0], groups[1][0]), Math.min(groups[0][0], groups[1][0]), groups[2][0]], name: 'ツーペア' };
+        if (groups[0][1] === 2) return { rank: 1, tieBreak: [groups[0][0], ...groups.slice(1).map(group => group[0]).sort((a, b) => b - a)], name: 'ワンペア' };
+        return { rank: 0, tieBreak: values, name: 'ハイカード' };
+    }
+
+    function comparePokerEvaluations(first, second) {
+        if (first.rank !== second.rank) return first.rank > second.rank ? 1 : -1;
+        for (let index = 0; index < Math.max(first.tieBreak.length, second.tieBreak.length); index++) {
+            if (first.tieBreak[index] !== second.tieBreak[index]) {
+                return (first.tieBreak[index] || 0) > (second.tieBreak[index] || 0) ? 1 : -1;
+            }
+        }
+        return 0;
+    }
+
+    function bestPokerHand(cards) {
+        let best = null;
+        for (let a = 0; a < cards.length - 4; a++) {
+            for (let b = a + 1; b < cards.length - 3; b++) {
+                for (let c = b + 1; c < cards.length - 2; c++) {
+                    for (let d = c + 1; d < cards.length - 1; d++) {
+                        for (let e = d + 1; e < cards.length; e++) {
+                            const result = evaluatePokerHand([cards[a], cards[b], cards[c], cards[d], cards[e]]);
+                            if (!best || comparePokerEvaluations(result, best) > 0) best = result;
+                        }
+                    }
+                }
+            }
+        }
+        return best;
+    }
+
+    function serializePokerCard(card) {
+        return { suit: card.suit.name, rank: card.rank, rankStr: card.rankStr };
+    }
+
+    function deserializePokerCard(card) {
+        const suit = suits.find(candidate => candidate.name === card.suit);
+        if (!suit || !Number.isInteger(card.rank) || card.rank < 0 || card.rank >= ranks.length) return null;
+        return { suit, rank: card.rank, rankStr: ranks[card.rank], faceUp: true };
+    }
+
+    function pokerName() {
+        const input = document.getElementById('poker-player-name');
+        const name = input.value.trim().slice(0, 16);
+        if (!name) throw new Error('プレイヤー名を入力してください。');
+        localStorage.setItem('poker-player-name', name);
+        return name;
+    }
+
+    function pokerRoomCode() {
+        return document.getElementById('poker-room-code').value.trim().toUpperCase();
+    }
+
+    function setPokerStatus(message) {
+        document.getElementById('poker-status').textContent = message;
+    }
+
+    async function createPokerRoom() {
+        if (onlineRequestPending || onlinePokerRoom) return;
+        onlineRequestPending = true;
+        document.getElementById('poker-create-button').disabled = true;
+        try {
+            const user = await getOnlineFirebaseUser();
+            const name = pokerName();
+            const roomCode = makeOnlineRoomCode();
+            const roomRef = onlineFirebaseDatabase.ref(`pokerRooms/${roomCode}`);
+            const publicRef = roomRef.child('public');
+            const room = {
+                status: 'waiting',
+                hostUid: user.uid,
+                hostName: name,
+                createdAt: firebase.database.ServerValue.TIMESTAMP,
+                players: { [user.uid]: { name, chips: 1000, connected: true, bet: 0, contribution: 0 } },
+                playerOrder: [user.uid],
+                game: null
+            };
+            const result = await publicRef.transaction(current => current === null ? room : undefined, undefined, false);
+            if (!result.committed) throw new Error('部屋コードが重複しました。もう一度お試しください。');
+            document.getElementById('poker-room-code').value = roomCode;
+            attachPokerRoom({ code: roomCode, roomRef, publicRef, uid: user.uid, isHost: true, name });
+        } catch (error) {
+            console.error('ポーカー部屋を作成できませんでした。', error);
+            setPokerStatus(error.message || '部屋を作成できませんでした。');
+        } finally {
+            onlineRequestPending = false;
+            document.getElementById('poker-create-button').disabled = false;
+        }
+    }
+
+    async function joinPokerRoom() {
+        if (onlineRequestPending || onlinePokerRoom) return;
+        onlineRequestPending = true;
+        document.getElementById('poker-join-button').disabled = true;
+        try {
+            const user = await getOnlineFirebaseUser();
+            const name = pokerName();
+            const roomCode = pokerRoomCode();
+            if (!/^[A-Z2-9]{6}$/.test(roomCode)) throw new Error('6桁の部屋コードを入力してください。');
+            const roomRef = onlineFirebaseDatabase.ref(`pokerRooms/${roomCode}`);
+            const publicRef = roomRef.child('public');
+            let joinError = '';
+            const result = await publicRef.transaction(current => {
+                if (!current) {
+                    joinError = '部屋が見つかりません。';
+                    return;
+                }
+                const players = current.players || {};
+                if (players[user.uid]) {
+                    players[user.uid].connected = true;
+                    players[user.uid].name = name;
+                    current.players = players;
+                    return current;
+                }
+                if (current.status !== 'waiting') {
+                    joinError = 'この部屋では参加者を募集していません。';
+                    return;
+                }
+                if (Object.keys(players).length >= 9) {
+                    joinError = 'この部屋は満員です（最大9人）。';
+                    return;
+                }
+                players[user.uid] = { name, chips: 1000, connected: true, bet: 0, contribution: 0 };
+                current.players = players;
+                current.playerOrder = [...(current.playerOrder || []), user.uid];
+                return current;
+            }, undefined, false);
+            if (!result.committed) throw new Error(joinError || '部屋に参加できませんでした。');
+            attachPokerRoom({ code: roomCode, roomRef, publicRef, uid: user.uid, isHost: false, name });
+        } catch (error) {
+            console.error('ポーカー部屋に参加できませんでした。', error);
+            setPokerStatus(error.message || '部屋に参加できませんでした。');
+        } finally {
+            onlineRequestPending = false;
+            document.getElementById('poker-join-button').disabled = false;
+        }
+    }
+
+    function attachPokerRoom(room) {
+        if (onlinePokerRoom) detachPokerRoom();
+        room.privateRef = room.roomRef.child(`private/${room.uid}`);
+        room.publicListener = snapshot => {
+            if (onlinePokerRoom !== room) return;
+            if (!snapshot.exists()) {
+                setPokerStatus('部屋が終了しました。');
+                detachPokerRoom();
+                return;
+            }
+            room.public = snapshot.val();
+            renderPokerRoom(room);
+            if (room.public.status === 'playing' && room.public.game?.phase === 'showdown') {
+                revealPokerCards(room);
+            }
+            if (room.isHost) processPokerHostState(room);
+        };
+        room.privateListener = snapshot => {
+            if (onlinePokerRoom !== room) return;
+            const value = snapshot.val();
+            room.holeCards = Array.isArray(value?.cards)
+                ? value.cards.map(deserializePokerCard).filter(Boolean)
+                : [];
+            renderPokerRoom(room);
+            if (room.public?.game?.phase === 'showdown') revealPokerCards(room);
+        };
+        onlinePokerRoom = room;
+        room.presenceRef = room.publicRef.child(`players/${room.uid}`);
+        room.presenceRef.onDisconnect().update({ connected: false }).catch(error => {
+            console.error('退出時の接続状態を登録できませんでした。', error);
+        });
+        room.publicRef.on('value', room.publicListener, error => {
+            console.error('ポーカールームの同期に失敗しました。', error);
+            setPokerStatus('部屋の同期に失敗しました。');
+        });
+        room.privateRef.on('value', room.privateListener, error => {
+            console.error('ホールカードを読み込めませんでした。', error);
+            setPokerStatus('ホールカードを読み込めませんでした。');
+        });
+        document.getElementById('poker-create-button').hidden = true;
+        document.getElementById('poker-join-button').hidden = true;
+        document.getElementById('poker-start-button').hidden = !room.isHost;
+        document.getElementById('poker-leave-button').hidden = false;
+        setPokerStatus(`部屋 ${room.code} に接続しました。`);
+    }
+
+    function detachPokerRoom() {
+        const room = onlinePokerRoom;
+        if (!room) return;
+        clearTimeout(pokerDealerTimer);
+        pokerDealerTimer = null;
+        pokerDealerBusy = false;
+        room.presenceRef.onDisconnect().cancel().catch(error => {
+            console.error('退出時の接続状態を解除できませんでした。', error);
+        });
+        room.publicRef.off('value', room.publicListener);
+        room.privateRef.off('value', room.privateListener);
+        onlinePokerRoom = null;
+        document.getElementById('poker-actions').hidden = true;
+        document.getElementById('poker-create-button').hidden = false;
+        document.getElementById('poker-join-button').hidden = false;
+        document.getElementById('poker-start-button').hidden = true;
+        document.getElementById('poker-leave-button').hidden = true;
+    }
+
+    async function leavePokerRoom() {
+        const room = onlinePokerRoom;
+        if (!room) return;
+        try {
+            await room.presenceRef.onDisconnect().cancel();
+        } catch (error) {
+            console.error('退出時の接続状態を解除できませんでした。', error);
+        }
+        try {
+            if (room.isHost) {
+                await Promise.all((room.public?.playerOrder || []).map(uid =>
+                    room.roomRef.child(`private/${uid}`).remove()));
+                await room.publicRef.remove();
+            } else if (room.public?.status === 'waiting') {
+                await room.publicRef.transaction(current => {
+                    if (!current?.players?.[room.uid]) return;
+                    delete current.players[room.uid];
+                    current.playerOrder = (current.playerOrder || []).filter(uid => uid !== room.uid);
+                    return current;
+                }, undefined, false);
+            } else {
+                if (room.public?.game?.turnUid === room.uid) await actPoker('fold');
+                await room.publicRef.child(`players/${room.uid}/connected`).set(false);
+                await room.publicRef.child(`players/${room.uid}/chips`).set(0);
+            }
+        } catch (error) {
+            console.error('ポーカールームを退出できませんでした。', error);
+            setPokerStatus('退出処理に失敗しました。接続を確認してください。');
+        } finally {
+            detachPokerRoom();
+        }
+    }
+
+    function makePokerDeck() {
+        const cards = [];
+        suits.forEach(suit => ranks.forEach((rankStr, rank) => cards.push({ suit, rank, rankStr })));
+        shuffleDeck(cards);
+        return cards;
+    }
+
+    async function startPokerTournament() {
+        const room = onlinePokerRoom;
+        if (!room?.isHost || room.public?.status !== 'waiting') return;
+        const button = document.getElementById('poker-start-button');
+        if (button.disabled) return;
+        button.disabled = true;
+        try {
+            const players = room.public.players || {};
+            const playerOrder = (room.public.playerOrder || []).filter(uid => players[uid]?.connected);
+            if (playerOrder.length < 2) {
+                setPokerStatus('対戦開始には2人以上必要です。');
+                return;
+            }
+            const deck = makePokerDeck();
+            const holes = Object.fromEntries(playerOrder.map(uid => [uid, [deck.pop(), deck.pop()]]));
+            const previousDealer = room.public.game?.dealerUid;
+            const previousIndex = playerOrder.indexOf(previousDealer);
+            const dealerIndex = previousIndex < 0 ? 0 : (previousIndex + 1) % playerOrder.length;
+            const game = createPokerHand(players, playerOrder, dealerIndex, (room.public.game?.roundNumber || 0) + 1, deck, holes);
+            await writePokerHand(room, players, playerOrder, game, holes, deck);
+        } catch (error) {
+            console.error('ポーカートーナメントを開始できませんでした。', error);
+            setPokerStatus(error.message || '対戦を開始できませんでした。');
+        } finally {
+            if (onlinePokerRoom === room && room.public?.status === 'waiting') {
+                button.disabled = (room.public.playerOrder || []).filter(uid =>
+                    room.public.players?.[uid]?.connected !== false).length < 2;
+            }
+        }
+    }
+
+    function createPokerHand(oldPlayers, playerOrder, dealerIndex, roundNumber, deck, holes) {
+        const players = JSON.parse(JSON.stringify(oldPlayers));
+        playerOrder.forEach(uid => {
+            players[uid].bet = 0;
+            players[uid].contribution = 0;
+            players[uid].folded = false;
+            players[uid].allIn = false;
+        });
+        const dealerUid = playerOrder[dealerIndex];
+        const smallBlindUid = playerOrder.length === 2 ? dealerUid : playerOrder[(dealerIndex + 1) % playerOrder.length];
+        const bigBlindUid = playerOrder.length === 2 ? playerOrder[(dealerIndex + 1) % playerOrder.length] : playerOrder[(dealerIndex + 2) % playerOrder.length];
+        const payBlind = (uid, amount) => {
+            const player = players[uid];
+            const paid = Math.min(amount, player.chips);
+            player.chips -= paid;
+            player.bet += paid;
+            player.contribution += paid;
+            player.allIn = player.chips === 0;
+            return paid;
+        };
+        const pot = payBlind(smallBlindUid, 10) + payBlind(bigBlindUid, 20);
+        const firstTurn = nextPokerActor(playerOrder, players, bigBlindUid);
+        return {
+            phase: firstTurn ? 'preflop' : 'deal',
+            nextPhase: firstTurn ? null : 'flop',
+            board: [],
+            pot,
+            currentBet: Math.max(players[smallBlindUid].bet, players[bigBlindUid].bet),
+            minRaise: 20,
+            dealerUid,
+            smallBlindUid,
+            bigBlindUid,
+            turnUid: firstTurn,
+            acted: [],
+            roundNumber,
+            revealedHands: {},
+            history: [`${players[smallBlindUid].name} がSB10、${players[bigBlindUid].name} がBB20を支払いました。`]
+        };
+    }
+
+    function nextPokerActor(playerOrder, players, afterUid) {
+        const start = Math.max(0, playerOrder.indexOf(afterUid));
+        for (let offset = 1; offset <= playerOrder.length; offset++) {
+            const uid = playerOrder[(start + offset) % playerOrder.length];
+            const player = players[uid];
+            if (player && player.connected !== false && !player.folded && player.chips > 0) return uid;
+        }
+        return null;
+    }
+
+    function firstPostflopPokerActor(playerOrder, players, dealerUid) {
+        if (playerOrder.length === 2) {
+            const dealer = players[dealerUid];
+            if (dealer && dealer.connected !== false && !dealer.folded && dealer.chips > 0) return dealerUid;
+        }
+        return nextPokerActor(playerOrder, players, dealerUid);
+    }
+
+    async function writePokerHand(room, players, playerOrder, game, holes, deck) {
+        const updates = {};
+        Object.keys(players).filter(uid => !playerOrder.includes(uid)).forEach(uid => {
+            updates[`private/${uid}`] = { cards: [] };
+        });
+        playerOrder.forEach(uid => {
+            updates[`private/${uid}`] = { cards: holes[uid].map(serializePokerCard) };
+        });
+        updates[`private/${room.uid}`] = {
+            cards: (holes[room.uid] || []).map(serializePokerCard),
+            deck: deck.map(serializePokerCard)
+        };
+        await room.roomRef.update(updates);
+        await room.publicRef.update({
+            status: 'playing',
+            players,
+            playerOrder,
+            game
+        });
+    }
+
+    function renderPokerRoom(room) {
+        const data = room.public;
+        if (!data) return;
+        const playerElement = document.getElementById('poker-players');
+        playerElement.replaceChildren();
+        const game = data.game;
+        const order = data.playerOrder || Object.keys(data.players || {});
+        order.forEach(uid => {
+            const player = data.players?.[uid];
+            if (!player) return;
+            const element = document.createElement('div');
+            element.className = 'poker-player';
+            if (game?.turnUid === uid) element.classList.add('current-turn');
+            if (player.folded) element.classList.add('folded');
+            const name = document.createElement('strong');
+            name.textContent = `${player.name}${uid === room.uid ? '（あなた）' : ''}${uid === game?.dealerUid ? ' · D' : ''}`;
+            const detail = document.createElement('div');
+            detail.textContent = `${player.chips} チップ · ベット ${player.bet || 0}${player.allIn ? ' · オールイン' : ''}${player.connected === false ? ' · 退出' : ''}`;
+            element.append(name, detail);
+            playerElement.append(element);
+        });
+        const boardElement = document.getElementById('poker-board');
+        boardElement.replaceChildren();
+        (game?.board || []).forEach(card => {
+            const decoded = deserializePokerCard(card);
+            if (decoded) boardElement.append(createCardDOM(decoded));
+        });
+        const handElement = document.getElementById('poker-player-hand');
+        handElement.replaceChildren();
+        (room.holeCards || []).forEach(card => handElement.append(createCardDOM(card)));
+        document.getElementById('poker-pot').textContent = game ? `ポット: ${game.pot} チップ` : 'ポット: 0 チップ';
+        const isMyTurn = game?.turnUid === room.uid;
+        document.getElementById('poker-actions').hidden = !isMyTurn;
+        const raiseInput = document.getElementById('poker-raise-amount');
+        if (game) {
+            raiseInput.min = game.minRaise;
+            if (Number(raiseInput.value) < game.minRaise) raiseInput.value = game.minRaise;
+            const player = data.players?.[room.uid];
+            const callAmount = Math.max(0, game.currentBet - (player?.bet || 0));
+            const ableToActCount = order.filter(uid =>
+                data.players?.[uid]?.connected !== false && !data.players?.[uid]?.folded
+                && data.players?.[uid]?.chips > 0).length;
+            document.getElementById('poker-raise-button').disabled =
+                !isMyTurn || ableToActCount <= 1
+                || (player?.chips || 0) < callAmount + game.minRaise;
+        }
+        const startButton = document.getElementById('poker-start-button');
+        startButton.hidden = !room.isHost || data.status !== 'waiting';
+        startButton.disabled = order.filter(uid => data.players?.[uid]?.connected !== false).length < 2;
+        if (data.status === 'waiting') {
+            const connectedCount = order.filter(uid => data.players?.[uid]?.connected !== false).length;
+            setPokerStatus(`部屋コード: ${room.code}　参加者 ${connectedCount}/9人。ホストが対戦を開始できます。`);
+        } else if (data.status === 'finished') {
+            setPokerStatus(`トーナメント終了！優勝: ${data.players?.[data.winnerUid]?.name || '不明'}`);
+        } else if (game?.phase === 'between-hands') {
+            setPokerStatus(`${game.resultText || 'ハンド終了'} 次のハンドを準備しています。`);
+        } else if (game?.phase === 'showdown') {
+            setPokerStatus(`${game.board?.length === 5 ? 'ショーダウン' : 'オールイン、ボードを公開中'} — カードを公開しています。`);
+        } else if (game?.phase === 'deal') {
+            setPokerStatus('コミュニティカードを配っています…');
+        } else if (game) {
+            setPokerStatus(isMyTurn ? `あなたの番です（${game.phase}）。` : `${data.players?.[game.turnUid]?.name || '相手'}の番です（${game.phase}）。`);
+        }
+    }
+
+    async function actPoker(action) {
+        const room = onlinePokerRoom;
+        if (!room || !room.public) return;
+        let actionError = '';
+        try {
+            const result = await room.publicRef.transaction(current => {
+                const game = current?.game;
+                const player = current?.players?.[room.uid];
+                if (current?.status !== 'playing' || !player || game?.turnUid !== room.uid
+                    || !['preflop', 'flop', 'turn', 'river'].includes(game.phase)) {
+                    actionError = '現在はあなたの番ではありません。';
+                    return;
+                }
+                if (action === 'fold') {
+                    player.folded = true;
+                    game.history = [...(game.history || []), `${player.name} がフォールドしました。`];
+                } else if (action === 'call') {
+                    const amount = Math.min(Math.max(0, game.currentBet - player.bet), player.chips);
+                    player.chips -= amount;
+                    player.bet += amount;
+                    player.contribution += amount;
+                    game.pot += amount;
+                    player.allIn = player.chips === 0;
+                    game.history = [...(game.history || []), amount ? `${player.name} が${amount}をコールしました。` : `${player.name} がチェックしました。`];
+                } else if (action === 'raise') {
+                    const increment = Math.floor(Number(document.getElementById('poker-raise-amount').value));
+                    const callAmount = Math.max(0, game.currentBet - player.bet);
+                    if (!Number.isFinite(increment) || increment < game.minRaise || player.chips < callAmount + increment) {
+                        actionError = `最低レイズ額は${game.minRaise}です。`;
+                        return;
+                    }
+                    const amount = callAmount + increment;
+                    player.chips -= amount;
+                    player.bet += amount;
+                    player.contribution += amount;
+                    game.pot += amount;
+                    game.minRaise = increment;
+                    game.currentBet = player.bet;
+                    player.allIn = player.chips === 0;
+                    game.acted = [];
+                    game.history = [...(game.history || []), `${player.name} が${increment}レイズしました。`];
+                } else {
+                    actionError = '選択した操作は無効です。';
+                    return;
+                }
+                game.acted = [...new Set([...(game.acted || []), room.uid])];
+                const remaining = (current.playerOrder || []).filter(uid => {
+                    const candidate = current.players[uid];
+                    return candidate && candidate.connected !== false && !candidate.folded;
+                });
+                if (remaining.length === 1) {
+                    payPokerFoldWinner(current, remaining[0]);
+                    return current;
+                }
+                const ableToAct = remaining.filter(uid => current.players[uid].chips > 0);
+                const roundComplete = ableToAct.length <= 1 || ableToAct.every(uid =>
+                    game.acted.includes(uid) && current.players[uid].bet === game.currentBet);
+                if (roundComplete) {
+                    const phases = { preflop: 'flop', flop: 'turn', turn: 'river', river: 'showdown' };
+                    const nextPhase = phases[game.phase];
+                    if (nextPhase === 'showdown') {
+                        game.phase = 'showdown';
+                        game.turnUid = null;
+                    } else {
+                        game.phase = 'deal';
+                        game.nextPhase = nextPhase;
+                        game.turnUid = null;
+                    }
+                } else {
+                    const previousPhase = game.phase;
+                    game.turnUid = nextPokerActor(current.playerOrder, current.players, room.uid);
+                    if (!game.turnUid) {
+                        game.phase = 'deal';
+                        game.nextPhase = previousPhase === 'preflop' ? 'flop'
+                            : previousPhase === 'flop' ? 'turn'
+                                : previousPhase === 'turn' ? 'river' : 'showdown';
+                    }
+                }
+                return current;
+            }, undefined, false);
+            if (!result.committed) throw new Error(actionError || '操作を確定できませんでした。');
+        } catch (error) {
+            console.error('ポーカーの操作に失敗しました。', error);
+            setPokerStatus(error.message || '操作に失敗しました。');
+        }
+    }
+
+    function payPokerFoldWinner(data, winnerUid) {
+        const game = data.game;
+        const winner = data.players[winnerUid];
+        winner.chips += game.pot;
+        game.resultText = `${winner.name} が全員のフォールドでポット ${game.pot} を獲得しました。`;
+        game.winners = [winnerUid];
+        game.phase = 'between-hands';
+        game.turnUid = null;
+        game.pot = 0;
+        Object.values(data.players).forEach(player => {
+            player.bet = 0;
+            player.contribution = 0;
+        });
+        const survivors = (data.playerOrder || []).filter(uid => data.players[uid]?.chips > 0 && data.players[uid].connected !== false);
+        if (survivors.length <= 1) {
+            data.status = 'finished';
+            data.winnerUid = survivors[0] || winnerUid;
+        }
+    }
+
+    function revealPokerCards(room) {
+        if (!room.holeCards || room.holeCards.length !== 2 || room.public?.game?.revealedHands?.[room.uid]) return;
+        const cards = room.holeCards.map(serializePokerCard);
+        room.publicRef.child(`game/revealedHands/${room.uid}`).set(cards).catch(error => {
+            console.error('ホールカードを公開できませんでした。', error);
+            setPokerStatus('ショーダウン時のカード公開に失敗しました。');
+        });
+    }
+
+    function processPokerHostState(room) {
+        const game = room.public?.game;
+        if (!game || pokerDealerBusy) return;
+        const disconnectedTurnUid = ['preflop', 'flop', 'turn', 'river'].includes(game.phase)
+            && game.turnUid && room.public.players?.[game.turnUid]?.connected === false
+            ? game.turnUid : null;
+        if (disconnectedTurnUid) {
+            pokerDealerBusy = true;
+            foldDisconnectedPokerPlayer(room, disconnectedTurnUid).catch(error => {
+                console.error('切断したプレイヤーのターンを進められませんでした。', error);
+                setPokerStatus('切断したプレイヤーのターン処理に失敗しました。');
+            }).finally(() => { pokerDealerBusy = false; });
+        } else if (game.phase === 'deal') {
+            pokerDealerBusy = true;
+            dealPokerStreet(room, game).catch(error => {
+                console.error('コミュニティカードを配れませんでした。', error);
+                setPokerStatus('コミュニティカードを配れませんでした。再接続してください。');
+            }).finally(() => { pokerDealerBusy = false; });
+        } else if (game.phase === 'showdown') {
+            const eligible = (room.public.playerOrder || []).filter(uid => {
+                const player = room.public.players?.[uid];
+                return player && !player.folded && player.connected !== false;
+            });
+            if (eligible.every(uid => game.revealedHands?.[uid])) {
+                pokerDealerBusy = true;
+                settlePokerShowdown(room, game, eligible).catch(error => {
+                    console.error('ショーダウンを精算できませんでした。', error);
+                    setPokerStatus('ショーダウンを精算できませんでした。');
+                }).finally(() => { pokerDealerBusy = false; });
+            }
+        } else if (game.phase === 'between-hands' && room.public.status === 'playing') {
+            clearTimeout(pokerDealerTimer);
+            pokerDealerTimer = setTimeout(() => {
+                if (onlinePokerRoom === room && room.public?.game?.phase === 'between-hands') {
+                    startNextPokerHand(room).catch(error => {
+                        console.error('次のハンドを開始できませんでした。', error);
+                        setPokerStatus('次のハンドを開始できませんでした。');
+                    });
+                }
+            }, 2500);
+        }
+    }
+
+    async function foldDisconnectedPokerPlayer(room, uid) {
+        await room.publicRef.transaction(current => {
+            const game = current?.game;
+            const player = current?.players?.[uid];
+            if (!game || game.turnUid !== uid || player?.connected !== false
+                || !['preflop', 'flop', 'turn', 'river'].includes(game.phase)) return;
+            player.folded = true;
+            const remaining = (current.playerOrder || []).filter(playerUid => {
+                const candidate = current.players[playerUid];
+                return candidate && candidate.connected !== false && !candidate.folded;
+            });
+            if (remaining.length === 1) {
+                payPokerFoldWinner(current, remaining[0]);
+                return current;
+            }
+            const ableToAct = remaining.filter(playerUid => current.players[playerUid].chips > 0);
+            const roundComplete = ableToAct.length <= 1 || ableToAct.every(playerUid =>
+                (game.acted || []).includes(playerUid) && current.players[playerUid].bet === game.currentBet);
+            if (roundComplete) {
+                const phases = { preflop: 'flop', flop: 'turn', turn: 'river', river: 'showdown' };
+                const nextPhase = phases[game.phase];
+                if (nextPhase === 'showdown') {
+                    game.phase = 'showdown';
+                    game.turnUid = null;
+                } else {
+                    game.phase = 'deal';
+                    game.nextPhase = nextPhase;
+                    game.turnUid = null;
+                }
+            } else {
+                const previousPhase = game.phase;
+                game.turnUid = nextPokerActor(current.playerOrder, current.players, uid);
+                if (!game.turnUid) {
+                    game.phase = 'deal';
+                    game.nextPhase = previousPhase === 'preflop' ? 'flop'
+                        : previousPhase === 'flop' ? 'turn'
+                            : previousPhase === 'turn' ? 'river' : 'showdown';
+                }
+            }
+            return current;
+        }, undefined, false);
+    }
+
+    async function dealPokerStreet(room, gameSnapshot) {
+        const privateSnapshot = await room.privateRef.once('value');
+        const privateData = privateSnapshot.val();
+        if (!Array.isArray(privateData?.deck)) throw new Error('ディーラーの山札を読み込めません。');
+        const deck = privateData.deck.slice();
+        const board = (gameSnapshot.board || []).slice();
+        if (gameSnapshot.nextPhase === 'flop') board.push(...deck.splice(0, 4).slice(1));
+        else if (gameSnapshot.nextPhase === 'turn' || gameSnapshot.nextPhase === 'river') board.push(...deck.splice(0, 2).slice(1));
+        else if (gameSnapshot.nextPhase === 'showdown') {
+            while (board.length < 5) {
+                deck.splice(0, 1);
+                board.push(deck.shift());
+            }
+        }
+        const nextPhase = gameSnapshot.nextPhase;
+        await room.privateRef.child('deck').set(deck);
+        await room.publicRef.transaction(current => {
+            if (current?.game?.phase !== 'deal' || current.game.roundNumber !== gameSnapshot.roundNumber) return;
+            const game = current.game;
+            game.board = board;
+            game.phase = nextPhase;
+            game.nextPhase = null;
+            game.currentBet = 0;
+            game.acted = [];
+            Object.values(current.players || {}).forEach(player => { player.bet = 0; });
+            if (nextPhase === 'showdown') {
+                game.turnUid = null;
+            } else {
+                game.turnUid = firstPostflopPokerActor(current.playerOrder, current.players, game.dealerUid);
+                if (!game.turnUid) {
+                    game.phase = 'deal';
+                    game.nextPhase = nextPhase === 'flop' ? 'turn' : nextPhase === 'turn' ? 'river' : 'showdown';
+                }
+            }
+            return current;
+        }, undefined, false);
+    }
+
+    async function settlePokerShowdown(room, gameSnapshot, eligible) {
+        const hands = Object.fromEntries(eligible.map(uid => [
+            uid,
+            (gameSnapshot.revealedHands[uid] || []).map(deserializePokerCard).filter(Boolean)
+        ]));
+        if (eligible.some(uid => hands[uid].length !== 2)) return;
+        const board = (gameSnapshot.board || []).map(deserializePokerCard).filter(Boolean);
+        if (board.length !== 5) return;
+        const evaluations = Object.fromEntries(eligible.map(uid => [uid, bestPokerHand([...hands[uid], ...board])]));
+        await room.publicRef.transaction(current => {
+            const game = current?.game;
+            if (game?.phase !== 'showdown' || game.roundNumber !== gameSnapshot.roundNumber) return;
+            const contributions = Object.values(current.players || {}).map(player => player.contribution || 0);
+            const levels = [...new Set(contributions.filter(value => value > 0))].sort((a, b) => a - b);
+            let previous = 0;
+            const awards = {};
+            levels.forEach(level => {
+                const contributors = Object.entries(current.players).filter(([, player]) => (player.contribution || 0) >= level);
+                const potAmount = (level - previous) * contributors.length;
+                const contenders = contributors.map(([uid]) => uid).filter(uid => !current.players[uid].folded && evaluations[uid]);
+                previous = level;
+                if (!contenders.length) contenders.push(...eligible.filter(uid => evaluations[uid]));
+                if (!contenders.length) return;
+                let winners = [contenders[0]];
+                contenders.slice(1).forEach(uid => {
+                    const comparison = comparePokerEvaluations(evaluations[uid], evaluations[winners[0]]);
+                    if (comparison > 0) winners = [uid];
+                    else if (comparison === 0) winners.push(uid);
+                });
+                const share = Math.floor(potAmount / winners.length);
+                winners.forEach(uid => { awards[uid] = (awards[uid] || 0) + share; });
+                for (let remainder = potAmount - share * winners.length, index = 0; remainder > 0; remainder--, index++) {
+                    awards[winners[index % winners.length]]++;
+                }
+            });
+            Object.entries(awards).forEach(([uid, amount]) => {
+                if (current.players[uid]) current.players[uid].chips += amount;
+            });
+            const winningUids = Object.keys(awards).filter(uid => awards[uid] > 0);
+            const winners = winningUids.map(uid => `${current.players[uid].name} (${evaluations[uid].name})`);
+            game.resultText = `勝者: ${winners.join('、') || 'なし'}`;
+            game.winners = winningUids;
+            game.phase = 'between-hands';
+            game.turnUid = null;
+            game.pot = 0;
+            Object.values(current.players).forEach(player => {
+                player.bet = 0;
+                player.contribution = 0;
+            });
+            const survivors = (current.playerOrder || []).filter(uid => current.players[uid]?.chips > 0 && current.players[uid].connected !== false);
+            if (survivors.length <= 1) {
+                current.status = 'finished';
+                current.winnerUid = survivors[0] || winningUids[0];
+            }
+            return current;
+        }, undefined, false);
+    }
+
+    async function startNextPokerHand(room) {
+        if (!room.isHost || room.public?.status !== 'playing' || room.public.game?.phase !== 'between-hands') return;
+        const players = room.public.players || {};
+        const playerOrder = (room.public.playerOrder || []).filter(uid =>
+            players[uid]?.chips > 0 && players[uid].connected !== false);
+        if (playerOrder.length <= 1) {
+            await room.publicRef.update({ status: 'finished', winnerUid: playerOrder[0] || null });
+            return;
+        }
+        const deck = makePokerDeck();
+        const holes = Object.fromEntries(playerOrder.map(uid => [uid, [deck.pop(), deck.pop()]]));
+        const oldDealer = room.public.game.dealerUid;
+        const previousIndex = playerOrder.indexOf(oldDealer);
+        const dealerIndex = previousIndex < 0 ? 0 : (previousIndex + 1) % playerOrder.length;
+        const game = createPokerHand(players, playerOrder, dealerIndex, room.public.game.roundNumber + 1, deck, holes);
+        await writePokerHand(room, players, playerOrder, game, holes, deck);
+    }
+
+    setGameContentInert(true);
 </script>
 
 </body>
