@@ -2921,6 +2921,14 @@
         document.getElementById('poker-status').textContent = message;
     }
 
+    function pokerFirebaseErrorMessage(error, action) {
+        const code = String(error?.code || error?.message || '');
+        if (/permission_denied/i.test(code)) {
+            return `Firebaseの権限が拒否しました。Realtime Databaseのルールに最新版のdatabase.rules.jsonを設定して「公開」し、GitHub Pagesと同じFirebaseプロジェクト／データベースを使っているか確認してください。`;
+        }
+        return error?.message || `ポーカーの${action}に失敗しました。`;
+    }
+
     async function createPokerRoom() {
         if (onlineRequestPending || onlinePokerRoom) return;
         onlineRequestPending = true;
@@ -2946,7 +2954,7 @@
             attachPokerRoom({ code: roomCode, roomRef, publicRef, uid: user.uid, isHost: true, name });
         } catch (error) {
             console.error('ポーカー部屋を作成できませんでした。', error);
-            setPokerStatus(error.message || '部屋を作成できませんでした。');
+            setPokerStatus(pokerFirebaseErrorMessage(error, '部屋作成'));
         } finally {
             onlineRequestPending = false;
             document.getElementById('poker-create-button').disabled = false;
@@ -2994,7 +3002,7 @@
             attachPokerRoom({ code: roomCode, roomRef, publicRef, uid: user.uid, isHost: false, name });
         } catch (error) {
             console.error('ポーカー部屋に参加できませんでした。', error);
-            setPokerStatus(error.message || '部屋に参加できませんでした。');
+            setPokerStatus(pokerFirebaseErrorMessage(error, '部屋参加'));
         } finally {
             onlineRequestPending = false;
             document.getElementById('poker-join-button').disabled = false;
