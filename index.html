@@ -734,7 +734,7 @@
                 <li>各プレイヤーに伏せたカードが2枚配られ、順番にチップを賭けます。ディーラーボタンの次がSB（10チップ）、その次がBB（20チップ）です。</li>
                 <li>場に共通カードが3枚（フロップ）、1枚（ターン）、さらに1枚（リバー）の順に公開されます。各公開後にベッティングを行います。</li>
                 <li>自分の手番では、ベット額に合わせて「チェック / コール」、最小レイズ額以上を上乗せする「レイズ」、または勝負を降りる「フォールド」を選びます。誰かがベットしていない場合のチェックは、チップを追加せずに順番を進めます。</li>
-                <li>最後まで複数人が残ったら、手札2枚と場札5枚の計7枚から最も強い5枚の役を比べます。途中で他の全員がフォールドした場合は、残った人がポットを獲得します。</li>
+                <li>最後まで複数人が残ったら、手札2枚と場札5枚の計7枚から最も強い5枚を選んで比べます。手札は2枚とも、1枚だけ、または使わなくてもかまいません。途中で他の全員がフォールドした場合は、残った人がポットを獲得します。</li>
                 <li>同じ強さならポットを分けます。チップが0になった人は脱落し、最後に残った人がトーナメント優勝です。</li>
             </ol>
             <p>レイズ額には、コールに必要な額とは別に「上乗せする額」を入力してください。最低レイズ額は画面に表示されます。手持ちチップが足りない場合はレイズできません。</p>
@@ -742,18 +742,18 @@
         <section aria-labelledby="poker-hands-title">
             <h2 id="poker-hands-title">役の強さ（上から強い順）</h2>
             <ol class="poker-hand-ranks">
-                <li><strong>ロイヤルフラッシュ</strong> — 同じマークの10・J・Q・K・A</li>
-                <li><strong>ストレートフラッシュ</strong> — 同じマークで数字が5枚連続</li>
-                <li><strong>フォーカード</strong> — 同じ数字が4枚</li>
-                <li><strong>フルハウス</strong> — スリーカードとワンペアの組み合わせ</li>
-                <li><strong>フラッシュ</strong> — 同じマークが5枚（数字は連続しなくてよい）</li>
-                <li><strong>ストレート</strong> — マークに関係なく数字が5枚連続。A・2・3・4・5もストレートです</li>
-                <li><strong>スリーカード</strong> — 同じ数字が3枚</li>
-                <li><strong>ツーペア</strong> — ワンペアが2組</li>
-                <li><strong>ワンペア</strong> — 同じ数字が2枚</li>
-                <li><strong>ハイカード</strong> — 上記の役がない場合。数字の高いカードで比べます</li>
+                <li><strong>ロイヤルフラッシュ</strong> — 同じマークの10・J・Q・K・A（最も強いストレートフラッシュ）</li>
+                <li><strong>ストレートフラッシュ</strong> — 同じマークで数字が5枚連続。例: 5・6・7・8・9</li>
+                <li><strong>フォーカード</strong> — 同じ数字が4枚。例: 8が4枚</li>
+                <li><strong>フルハウス</strong> — スリーカードとワンペアの組み合わせ。例: 3が3枚と6が2枚</li>
+                <li><strong>フラッシュ</strong> — 同じマークが5枚（数字は連続しなくてよい）。例: 同じマークの2・5・8・J・K</li>
+                <li><strong>ストレート</strong> — マークに関係なく数字が5枚連続。A・2・3・4・5もストレートですが、Q・K・A・2・3のようにAをまたいでつなげることはできません</li>
+                <li><strong>スリーカード</strong> — 同じ数字が3枚。例: 7が3枚</li>
+                <li><strong>ツーペア</strong> — ワンペアが2組。例: Aが2枚と4が2枚</li>
+                <li><strong>ワンペア</strong> — 同じ数字が2枚。例: Qが2枚</li>
+                <li><strong>ハイカード</strong> — 上記の役がない場合。最も高いカードから順に比べます</li>
             </ol>
-            <p>同じ役同士は、役を作る数字と残りのカード（キッカー）の高さを順に比べます。それも同じなら引き分けです。</p>
+            <p>Aは通常Kより強いカードとして扱い、A・2・3・4・5のストレートでは最も低いカードになります。同じ役同士は、役を作る数字と残りのカード（キッカー）の高さを順に比べます。マークに強さの差はなく、比べるカードもすべて同じなら引き分けです。</p>
         </section>
     </details>
     <p id="poker-status" class="poker-status" aria-live="polite">部屋を作るか、部屋コードで参加してください。</p>
@@ -885,6 +885,7 @@
     <button id="shop-toggle-button" class="shop-toggle-button" onclick="toggleShop()" aria-expanded="false">ショップを表示</button>
     <button id="audio-toggle" class="shop-toggle-button" type="button" onclick="toggleSound()">効果音: ON</button>
     <button id="music-button" class="shop-toggle-button" type="button" onclick="openMusicMenu()">音楽</button>
+    <button id="solitaire-menu-button" class="shop-toggle-button" type="button" onclick="returnToStartScreen()">ゲーム選択に戻る</button>
 </header>
 
 <section class="online-match" aria-labelledby="online-match-title">
