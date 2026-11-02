@@ -3398,7 +3398,8 @@
         });
         const handElement = document.getElementById('poker-player-hand');
         handElement.replaceChildren();
-        (room.holeCards || []).forEach(card => handElement.append(createCardDOM(card)));
+        (room.holeCards || []).forEach(card =>
+            handElement.append(createCardDOM({ ...card, faceUp: true })));
         document.getElementById('poker-pot').textContent = game ? `ポット: ${game.pot} チップ` : 'ポット: 0 チップ';
         const isMyTurn = game?.turnUid === room.uid;
         document.getElementById('poker-actions').hidden = !isMyTurn;
