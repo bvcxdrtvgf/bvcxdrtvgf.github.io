@@ -3253,7 +3253,8 @@
 
     function makePokerDeck() {
         const cards = [];
-        suits.forEach(suit => ranks.forEach((rankStr, rank) => cards.push({ suit, rank, rankStr })));
+        suits.forEach(suit => ranks.forEach((rankStr, rank) =>
+            cards.push({ suit, rank, rankStr, faceUp: true })));
         shuffleDeck(cards);
         return cards;
     }
