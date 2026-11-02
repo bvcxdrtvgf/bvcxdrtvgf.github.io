@@ -94,6 +94,41 @@
         .poker-screen h2 {
             margin: 0 0 16px;
         }
+        .poker-online-roster {
+            position: absolute;
+            top: 14px;
+            right: 14px;
+            z-index: 2;
+            width: min(210px, calc(100% - 28px));
+            padding: 10px 12px;
+            border: 1px solid rgba(255,255,255,0.55);
+            border-radius: 8px;
+            background: rgba(0,0,0,0.55);
+            text-align: left;
+        }
+        .poker-online-roster[hidden] {
+            display: none;
+        }
+        .poker-online-roster h2 {
+            margin: 0 0 6px;
+            font-size: 15px;
+        }
+        .poker-online-roster ul {
+            display: grid;
+            gap: 4px;
+            margin: 0;
+            padding: 0;
+            list-style: none;
+            font-size: 13px;
+        }
+        @media (max-width: 700px) {
+            .poker-online-roster {
+                position: static;
+                width: fit-content;
+                max-width: 100%;
+                margin: 0 0 12px auto;
+            }
+        }
         .poker-lobby {
             display: flex;
             justify-content: center;
@@ -101,6 +136,9 @@
             gap: 8px;
             flex-wrap: wrap;
             margin-bottom: 18px;
+        }
+        .poker-admin {
+            margin: 12px auto;
         }
         .poker-table {
             margin: 18px auto;
@@ -711,6 +749,10 @@
 </main>
 
 <main id="poker-screen" class="poker-screen" aria-labelledby="poker-title" hidden>
+    <aside id="poker-online-roster" class="poker-online-roster" aria-label="オンラインプレイヤー一覧" hidden>
+        <h2>プレイヤー / 勝利数</h2>
+        <ul id="poker-online-roster-list"></ul>
+    </aside>
     <h1 id="poker-title">テキサスホールデム</h1>
     <p>オンラインは2〜9人、CPU戦は1対1です。各プレイヤー1,000チップ、SB 10 / BB 20で開始し、チップが0になると脱落します。オンライン対戦ではホストが接続を維持してください。</p>
     <p>ソリティアで解放・選択中のキャラカードを使用します。キャラカードの解放と切り替えはソリティアのショップで行えます。</p>
@@ -734,6 +776,30 @@
         </select>
         <button id="poker-cpu-start-button" type="button" onclick="startPokerCpuMatch()">CPUと対戦</button>
     </div>
+    <section id="poker-admin-panel" class="poker-admin" aria-label="CPU戦管理者設定">
+        <button id="poker-admin-toggle" class="shop-toggle-button" type="button" onclick="togglePokerAdminPanel()">CPU戦管理者モード</button>
+        <div id="poker-admin-login" class="poker-lobby" hidden>
+            <label for="poker-admin-code">管理コード</label>
+            <input id="poker-admin-code" class="bet-input" type="password" maxlength="32" autocomplete="off">
+            <button type="button" onclick="unlockPokerAdminMode()">認証</button>
+        </div>
+        <div id="poker-admin-settings" class="poker-lobby" hidden>
+            <label for="poker-admin-hand">次のCPU戦で成立させる役</label>
+            <select id="poker-admin-hand" class="difficulty-select">
+                <option value="royal-flush">ロイヤルフラッシュ</option>
+                <option value="straight-flush">ストレートフラッシュ</option>
+                <option value="four-of-a-kind">フォーカード</option>
+                <option value="full-house">フルハウス</option>
+                <option value="flush">フラッシュ</option>
+                <option value="straight">ストレート</option>
+                <option value="three-of-a-kind">スリーカード</option>
+                <option value="two-pair">ツーペア</option>
+                <option value="one-pair">ワンペア</option>
+                <option value="high-card">ハイカード</option>
+            </select>
+            <button type="button" onclick="disablePokerAdminMode()">管理者モードを終了</button>
+        </div>
+    </section>
     <button class="shop-toggle-button" type="button" onclick="openMusicMenu()">音楽</button>
     <p>CPUは難易度が高いほど役の完成見込みを詳しく評価し、強い手を狙います。</p>
     <section class="poker-table" aria-label="ポーカーテーブル">
@@ -1081,6 +1147,7 @@
     let onlineMatch = null;
     let onlinePokerRoom = null;
     let localPokerRoom = null;
+    let pokerAdminModeEnabled = false;
     let pokerDealerBusy = false;
     let pokerDealerTimer = null;
     let onlineFirebaseAuth = null;
@@ -2913,6 +2980,8 @@
         document.getElementById('poker-screen').hidden = false;
         document.getElementById('poker-online-lobby').hidden = false;
         document.getElementById('poker-cpu-controls').hidden = false;
+        document.getElementById('poker-online-roster').hidden = true;
+        document.getElementById('poker-admin-panel').hidden = false;
         setGameContentInert(false);
         document.getElementById('poker-player-name').value =
             localStorage.getItem('poker-player-name') || '';
@@ -2929,12 +2998,14 @@
         clearTimeout(pokerDealerTimer);
         pokerDealerTimer = null;
         localPokerRoom = null;
+        if (pokerAdminModeEnabled) disablePokerAdminMode();
         gameStarted = false;
         document.body.classList.remove('poker-mode');
         document.getElementById('poker-screen').hidden = true;
         document.getElementById('start-screen').hidden = false;
         document.getElementById('poker-online-lobby').hidden = false;
         document.getElementById('poker-cpu-controls').hidden = false;
+        document.getElementById('poker-online-roster').hidden = true;
         document.getElementById('poker-cpu-start-button').textContent = 'CPUと対戦';
         setGameContentInert(true);
     }
@@ -2958,12 +3029,35 @@
         const humanUid = 'local-human';
         const cpuUid = 'local-cpu';
         const players = {
-            [humanUid]: { name, chips: 1000, connected: true, bet: 0, contribution: 0 },
-            [cpuUid]: { name: `CPU（${{ easy: '簡単', normal: '普通', hard: '難しい', new: 'ナイトメア' }[difficulty]}）`, chips: 1000, connected: true, bet: 0, contribution: 0 }
+            [humanUid]: { name, chips: 1000, wins: 0, connected: true, bet: 0, contribution: 0 },
+            [cpuUid]: { name: `CPU（${{ easy: '簡単', normal: '普通', hard: '難しい', new: 'ナイトメア' }[difficulty]}）`, chips: 1000, wins: 0, connected: true, bet: 0, contribution: 0 }
         };
         const playerOrder = [humanUid, cpuUid];
         const deck = makePokerDeck();
-        const holes = Object.fromEntries(playerOrder.map(uid => [uid, [deck.pop(), deck.pop()]]));
+        const forcedCards = pokerAdminModeEnabled
+            ? makePokerAdminHand(document.getElementById('poker-admin-hand').value)
+            : null;
+        let boardCards = null;
+        let holes;
+        if (forcedCards) {
+            const forcedCardIds = new Set(forcedCards.map(card => `${card.suit.name}:${card.rank}`));
+            const remainingDeck = deck.filter(card => !forcedCardIds.has(`${card.suit.name}:${card.rank}`));
+            const playerCards = forcedCards.slice(0, 2);
+            boardCards = forcedCards.slice(2);
+            holes = {
+                [humanUid]: playerCards,
+                [cpuUid]: [remainingDeck.pop(), remainingDeck.pop()]
+            };
+            const burnCards = remainingDeck.splice(0, 3);
+            remainingDeck.push(
+                boardCards[4], burnCards[2],
+                boardCards[3], burnCards[1],
+                boardCards[2], boardCards[1], boardCards[0], burnCards[0]
+            );
+            deck.splice(0, deck.length, ...remainingDeck);
+        } else {
+            holes = Object.fromEntries(playerOrder.map(uid => [uid, [deck.pop(), deck.pop()]]));
+        }
         const game = createPokerHand(players, playerOrder, 0, 1, deck, holes);
         document.getElementById('poker-cpu-start-button').textContent = 'CPUと対戦';
         localPokerRoom = {
@@ -2996,7 +3090,11 @@
         const straightHigh = wheelStraight ? 5 : values[0];
         const flush = hand.every(card => card.suit.name === hand[0].suit.name);
 
-        if (straight && flush) return { rank: 8, tieBreak: [straightHigh], name: 'ストレートフラッシュ' };
+        if (straight && flush) return {
+            rank: 8,
+            tieBreak: [straightHigh],
+            name: straightHigh === 14 ? 'ロイヤルフラッシュ' : 'ストレートフラッシュ'
+        };
         if (groups[0][1] === 4) return { rank: 7, tieBreak: [groups[0][0], groups[1][0]], name: 'フォーカード' };
         if (groups[0][1] === 3 && groups[1][1] === 2) return { rank: 6, tieBreak: [groups[0][0], groups[1][0]], name: 'フルハウス' };
         if (flush) return { rank: 5, tieBreak: values, name: 'フラッシュ' };
@@ -3061,6 +3159,41 @@
         document.getElementById('poker-status').textContent = message;
     }
 
+    function togglePokerAdminPanel() {
+        if (pokerAdminModeEnabled) {
+            disablePokerAdminMode();
+            return;
+        }
+        const login = document.getElementById('poker-admin-login');
+        login.hidden = !login.hidden;
+        if (!login.hidden) document.getElementById('poker-admin-code').focus();
+    }
+
+    function unlockPokerAdminMode() {
+        const input = document.getElementById('poker-admin-code');
+        if (input.value.trim().toUpperCase() !== adminAccessCode) {
+            input.value = '';
+            input.setCustomValidity('管理コードが違います。');
+            input.reportValidity();
+            input.setCustomValidity('');
+            return;
+        }
+        input.value = '';
+        pokerAdminModeEnabled = true;
+        document.getElementById('poker-admin-login').hidden = true;
+        document.getElementById('poker-admin-settings').hidden = false;
+        document.getElementById('poker-admin-toggle').textContent = 'CPU戦管理者モード: ON';
+        setPokerStatus('管理者モードです。選んだ役は次のCPU戦の最初のハンドに適用されます。');
+    }
+
+    function disablePokerAdminMode() {
+        pokerAdminModeEnabled = false;
+        document.getElementById('poker-admin-login').hidden = true;
+        document.getElementById('poker-admin-settings').hidden = true;
+        document.getElementById('poker-admin-toggle').textContent = 'CPU戦管理者モード';
+        setPokerStatus('CPU戦管理者モードを終了しました。');
+    }
+
     function pokerFirebaseErrorMessage(error, action) {
         const code = String(error?.code || error?.message || '');
         if (/permission_denied/i.test(code)) {
@@ -3084,7 +3217,7 @@
                 hostUid: user.uid,
                 hostName: name,
                 createdAt: firebase.database.ServerValue.TIMESTAMP,
-                players: { [user.uid]: { name, chips: 1000, connected: true, bet: 0, contribution: 0 } },
+                players: { [user.uid]: { name, chips: 1000, wins: 0, connected: true, bet: 0, contribution: 0 } },
                 playerOrder: [user.uid],
                 game: null
             };
@@ -3133,7 +3266,7 @@
                     joinError = 'この部屋は満員です（最大9人）。';
                     return;
                 }
-                players[user.uid] = { name, chips: 1000, connected: true, bet: 0, contribution: 0 };
+                players[user.uid] = { name, chips: 1000, wins: 0, connected: true, bet: 0, contribution: 0 };
                 current.players = players;
                 current.playerOrder = [...(current.playerOrder || []), user.uid];
                 return current;
@@ -3192,6 +3325,8 @@
         document.getElementById('poker-join-button').hidden = true;
         document.getElementById('poker-online-lobby').hidden = false;
         document.getElementById('poker-cpu-controls').hidden = true;
+        document.getElementById('poker-online-roster').hidden = false;
+        document.getElementById('poker-admin-panel').hidden = true;
         document.getElementById('poker-start-button').hidden = !room.isHost;
         document.getElementById('poker-leave-button').hidden = false;
         setPokerStatus(`部屋 ${room.code} に接続しました。`);
@@ -3216,6 +3351,8 @@
         document.getElementById('poker-leave-button').hidden = true;
         document.getElementById('poker-online-lobby').hidden = false;
         document.getElementById('poker-cpu-controls').hidden = false;
+        document.getElementById('poker-online-roster').hidden = true;
+        document.getElementById('poker-admin-panel').hidden = false;
     }
 
     async function leavePokerRoom() {
@@ -3259,6 +3396,66 @@
         return cards;
     }
 
+    function makePokerAdminHand(handName) {
+        const card = (suitName, rank) => ({
+            suit: suits.find(suit => suit.name === suitName),
+            rank,
+            rankStr: ranks[rank],
+            faceUp: true
+        });
+        const definitions = {
+            'royal-flush': [
+                ['S', 9], ['S', 10], ['S', 11], ['S', 12], ['S', 0], ['H', 4], ['D', 1]
+            ],
+            'straight-flush': [
+                ['C', 4], ['C', 5], ['C', 6], ['C', 7], ['C', 8], ['S', 0], ['H', 10]
+            ],
+            'four-of-a-kind': [
+                ['H', 7], ['D', 7], ['C', 7], ['S', 7], ['H', 0], ['D', 11], ['C', 1]
+            ],
+            'full-house': [
+                ['H', 6], ['D', 6], ['C', 6], ['S', 3], ['H', 3], ['D', 0], ['C', 11]
+            ],
+            flush: [
+                ['H', 0], ['H', 10], ['H', 7], ['H', 4], ['H', 1], ['C', 11], ['S', 5]
+            ],
+            straight: [
+                ['H', 4], ['D', 5], ['C', 6], ['S', 7], ['H', 8], ['C', 11], ['S', 0]
+            ],
+            'three-of-a-kind': [
+                ['H', 7], ['D', 7], ['C', 7], ['S', 0], ['H', 10], ['C', 4], ['S', 1]
+            ],
+            'two-pair': [
+                ['H', 0], ['D', 0], ['C', 6], ['S', 6], ['H', 11], ['D', 3], ['C', 1]
+            ],
+            'one-pair': [
+                ['H', 0], ['D', 0], ['C', 12], ['S', 8], ['H', 5], ['D', 2], ['C', 1]
+            ],
+            'high-card': [
+                ['H', 0], ['D', 11], ['C', 9], ['S', 7], ['H', 5], ['D', 3], ['C', 1]
+            ]
+        };
+        const definition = definitions[handName];
+        if (!definition) throw new Error('管理者設定の役が無効です。');
+        const cards = definition.map(([suit, rank]) => card(suit, rank));
+        const expectedRanks = {
+            'royal-flush': 8,
+            'straight-flush': 8,
+            'four-of-a-kind': 7,
+            'full-house': 6,
+            flush: 5,
+            straight: 4,
+            'three-of-a-kind': 3,
+            'two-pair': 2,
+            'one-pair': 1,
+            'high-card': 0
+        };
+        if (bestPokerHand(cards).rank !== expectedRanks[handName]) {
+            throw new Error('管理者設定の役を作成できませんでした。');
+        }
+        return cards;
+    }
+
     async function startPokerTournament() {
         const room = onlinePokerRoom;
         if (!room?.isHost || room.public?.status !== 'waiting') return;
@@ -3297,6 +3494,9 @@
             players[uid].contribution = 0;
             players[uid].folded = false;
             players[uid].allIn = false;
+            players[uid].wins = Number.isFinite(Number(players[uid].wins))
+                ? Math.max(0, Math.floor(Number(players[uid].wins)))
+                : 0;
         });
         const dealerUid = playerOrder[dealerIndex];
         const smallBlindUid = playerOrder.length === 2 ? dealerUid : playerOrder[(dealerIndex + 1) % playerOrder.length];
@@ -3376,6 +3576,11 @@
         playerElement.replaceChildren();
         const game = data.game;
         const order = data.playerOrder || Object.keys(data.players || {});
+        const roster = document.getElementById('poker-online-roster');
+        const rosterList = document.getElementById('poker-online-roster-list');
+        rosterList.replaceChildren();
+        const isOnlineRoom = onlinePokerRoom === room;
+        roster.hidden = !isOnlineRoom;
         order.forEach(uid => {
             const player = data.players?.[uid];
             if (!player) return;
@@ -3386,9 +3591,14 @@
             const name = document.createElement('strong');
             name.textContent = `${player.name}${uid === room.uid ? '（あなた）' : ''}${uid === game?.dealerUid ? ' · D' : ''}`;
             const detail = document.createElement('div');
-            detail.textContent = `${player.chips} チップ · ベット ${player.bet || 0}${player.allIn ? ' · オールイン' : ''}${player.connected === false ? ' · 退出' : ''}`;
+            detail.textContent = `${player.chips} チップ · ベット ${player.bet || 0} · 勝利 ${player.wins || 0}${player.allIn ? ' · オールイン' : ''}${player.connected === false ? ' · 退出' : ''}`;
             element.append(name, detail);
             playerElement.append(element);
+            if (isOnlineRoom) {
+                const rosterItem = document.createElement('li');
+                rosterItem.textContent = `${player.name}: ${player.wins || 0}勝${player.connected === false ? '（退出）' : ''}`;
+                rosterList.append(rosterItem);
+            }
         });
         const boardElement = document.getElementById('poker-board');
         boardElement.replaceChildren();
@@ -3647,6 +3857,7 @@
         const winners = comparison === 0
             ? evaluations.map(result => result.uid)
             : [evaluations[comparison > 0 ? 0 : 1].uid];
+        recordPokerHandWinners(room.public.players, winners);
         const share = Math.floor(game.pot / winners.length);
         winners.forEach(uid => { room.public.players[uid].chips += share; });
         if (winners.length === 2 && game.pot % 2) {
@@ -3794,9 +4005,16 @@
         }
     }
 
+    function recordPokerHandWinners(players, winnerUids) {
+        [...new Set(winnerUids)].forEach(uid => {
+            if (players[uid]) players[uid].wins = (Number(players[uid].wins) || 0) + 1;
+        });
+    }
+
     function payPokerFoldWinner(data, winnerUid) {
         const game = data.game;
         const winner = data.players[winnerUid];
+        recordPokerHandWinners(data.players, [winnerUid]);
         winner.chips += game.pot;
         game.resultText = `${winner.name} が全員のフォールドでポット ${game.pot} を獲得しました。`;
         game.winners = [winnerUid];
@@ -3986,6 +4204,7 @@
                 if (current.players[uid]) current.players[uid].chips += amount;
             });
             const winningUids = Object.keys(awards).filter(uid => awards[uid] > 0);
+            recordPokerHandWinners(current.players, winningUids);
             const winners = winningUids.map(uid => `${current.players[uid].name} (${evaluations[uid].name})`);
             game.resultText = `勝者: ${winners.join('、') || 'なし'}`;
             game.winners = winningUids;
