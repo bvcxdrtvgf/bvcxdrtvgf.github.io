@@ -137,6 +137,39 @@
             flex-wrap: wrap;
             margin-bottom: 18px;
         }
+        .poker-room-browser {
+            max-width: 560px;
+            margin: 0 auto 18px;
+            padding: 14px;
+            border: 1px solid rgba(255,255,255,0.55);
+            border-radius: 8px;
+            background: rgba(0,0,0,0.18);
+        }
+        .poker-room-browser h2 {
+            margin: 0 0 10px;
+            font-size: 18px;
+        }
+        .poker-room-list {
+            display: grid;
+            gap: 8px;
+            margin: 0;
+            padding: 0;
+            list-style: none;
+        }
+        .poker-room-list button {
+            width: 100%;
+            text-align: left;
+        }
+        .poker-room-list button span {
+            display: block;
+            margin-top: 4px;
+            font-size: 13px;
+            font-weight: normal;
+        }
+        .poker-room-empty {
+            margin: 0;
+            font-size: 14px;
+        }
         .poker-admin {
             margin: 12px auto;
         }
@@ -813,13 +846,17 @@
         <label for="poker-player-name">名前</label>
         <input id="poker-player-name" class="bet-input" type="text" maxlength="16" autocomplete="nickname" placeholder="プレイヤー名">
         <button id="poker-create-button" type="button" onclick="createPokerRoom()">部屋を作る</button>
-        <label for="poker-room-code">部屋コード</label>
-        <input id="poker-room-code" class="bet-input" type="text" maxlength="6" autocomplete="off" placeholder="6桁コード" aria-label="ポーカー部屋コード">
-        <button id="poker-join-button" type="button" onclick="joinPokerRoom()">参加</button>
         <button id="poker-achievement-open" type="button" onclick="openPokerAchievementDialog()">実績</button>
         <button id="poker-start-button" type="button" onclick="startPokerTournament()" hidden>対戦開始</button>
         <button id="poker-leave-button" type="button" onclick="leavePokerRoom()" hidden>部屋を退出</button>
     </div>
+    <section id="poker-room-browser" class="poker-room-browser" aria-labelledby="poker-room-browser-title">
+        <h2 id="poker-room-browser-title">参加できる部屋</h2>
+        <ul id="poker-room-list" class="poker-room-list" aria-live="polite">
+            <li class="poker-room-empty">部屋一覧を読み込み中...</li>
+        </ul>
+        <button id="poker-room-refresh" type="button" onclick="refreshPokerRoomDirectory()">一覧を更新</button>
+    </section>
     <div id="poker-cpu-controls" class="poker-lobby">
         <label for="poker-cpu-difficulty">CPU難易度</label>
         <select id="poker-cpu-difficulty" class="difficulty-select">
@@ -1248,6 +1285,8 @@
     let onlineFirebaseAuth = null;
     let onlineFirebaseDatabase = null;
     let onlineFirebaseUser = null;
+    let pokerRoomDirectoryRef = null;
+    let pokerRoomDirectoryListener = null;
     let onlineRequestPending = false;
     let gameStarted = false;
     const onlineFirebaseConfig = {
@@ -3075,6 +3114,7 @@
         document.getElementById('poker-screen').hidden = false;
         document.getElementById('poker-online-lobby').hidden = false;
         document.getElementById('poker-cpu-controls').hidden = false;
+        document.getElementById('poker-room-browser').hidden = false;
         document.getElementById('poker-online-roster').hidden = true;
         document.getElementById('poker-admin-panel').hidden = false;
         setGameContentInert(false);
@@ -3086,11 +3126,13 @@
         document.getElementById('poker-player-hand').replaceChildren();
         document.getElementById('poker-pot').textContent = 'ポット: 0 チップ';
         document.getElementById('poker-actions').hidden = true;
-        setPokerStatus('部屋を作るか、部屋コードで参加してください。');
+        setPokerStatus('部屋を作るか、参加できる部屋一覧から選んでください。');
+        startPokerRoomDirectoryListener();
     }
 
     function returnToStartScreen() {
         if (onlinePokerRoom) leavePokerRoom();
+        stopPokerRoomDirectoryListener();
         clearTimeout(pokerDealerTimer);
         pokerDealerTimer = null;
         localPokerRoom = null;
@@ -3408,12 +3450,88 @@
         }
     }
 
-    function pokerRoomCode() {
-        return document.getElementById('poker-room-code').value.trim().toUpperCase();
-    }
-
     function setPokerStatus(message) {
         document.getElementById('poker-status').textContent = message;
+    }
+
+    function renderPokerRoomDirectory(snapshot) {
+        const list = document.getElementById('poker-room-list');
+        list.replaceChildren();
+        const rooms = [];
+        snapshot.forEach(roomSnapshot => {
+            const room = roomSnapshot.val();
+            if (room?.status === 'waiting' && Number.isInteger(room.playerCount)
+                && room.playerCount >= 1 && room.playerCount < 9) {
+                rooms.push({ id: roomSnapshot.key, ...room });
+            }
+        });
+        rooms.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+        if (!rooms.length) {
+            const empty = document.createElement('li');
+            empty.className = 'poker-room-empty';
+            empty.textContent = '現在、参加できる部屋はありません。';
+            list.append(empty);
+            return;
+        }
+        rooms.forEach(room => {
+            const item = document.createElement('li');
+            const button = document.createElement('button');
+            button.type = 'button';
+            button.disabled = onlineRequestPending;
+            button.addEventListener('click', () => joinPokerRoom(room.id));
+            button.append(document.createTextNode(`${room.hostName || 'プレイヤー'} の部屋`));
+            const detail = document.createElement('span');
+            detail.textContent = `${room.playerCount}/9人・参加者募集中`;
+            button.append(detail);
+            item.append(button);
+            list.append(item);
+        });
+    }
+
+    async function refreshPokerRoomDirectory() {
+        const refreshButton = document.getElementById('poker-room-refresh');
+        refreshButton.disabled = true;
+        try {
+            await getOnlineFirebaseUser();
+            const snapshot = await onlineFirebaseDatabase.ref('pokerRoomDirectory')
+                .orderByChild('status').equalTo('waiting').once('value');
+            renderPokerRoomDirectory(snapshot);
+        } catch (error) {
+            console.error('参加可能なポーカールームを取得できませんでした。', error);
+            document.getElementById('poker-room-list').replaceChildren();
+            const unavailable = document.createElement('li');
+            unavailable.className = 'poker-room-empty';
+            unavailable.textContent = '部屋一覧を取得できません。接続またはFirebaseの設定を確認してください。';
+            document.getElementById('poker-room-list').append(unavailable);
+            setPokerStatus(pokerFirebaseErrorMessage(error, '部屋一覧の取得'));
+        } finally {
+            refreshButton.disabled = false;
+        }
+    }
+
+    async function startPokerRoomDirectoryListener() {
+        try {
+            await getOnlineFirebaseUser();
+            if (pokerRoomDirectoryListener) return;
+            pokerRoomDirectoryRef = onlineFirebaseDatabase.ref('pokerRoomDirectory')
+                .orderByChild('status').equalTo('waiting');
+            pokerRoomDirectoryListener = snapshot => renderPokerRoomDirectory(snapshot);
+            pokerRoomDirectoryRef.on('value', pokerRoomDirectoryListener, error => {
+                console.error('参加可能なポーカールームを同期できませんでした。', error);
+                setPokerStatus(pokerFirebaseErrorMessage(error, '部屋一覧の同期'));
+            });
+        } catch (error) {
+            console.error('参加可能なポーカールームを読み込めませんでした。', error);
+            setPokerStatus(pokerFirebaseErrorMessage(error, '部屋一覧の取得'));
+        }
+    }
+
+    function stopPokerRoomDirectoryListener() {
+        if (pokerRoomDirectoryRef && pokerRoomDirectoryListener) {
+            pokerRoomDirectoryRef.off('value', pokerRoomDirectoryListener);
+        }
+        pokerRoomDirectoryRef = null;
+        pokerRoomDirectoryListener = null;
     }
 
     function togglePokerAdminPanel() {
@@ -3526,9 +3644,11 @@
         try {
             const user = await getOnlineFirebaseUser();
             const name = pokerName();
-            const roomCode = makeOnlineRoomCode();
-            const roomRef = onlineFirebaseDatabase.ref(`pokerRooms/${roomCode}`);
+            const roomId = onlineFirebaseDatabase.ref('pokerRooms').push().key;
+            if (!roomId) throw new Error('部屋を作成できませんでした。もう一度お試しください。');
+            const roomRef = onlineFirebaseDatabase.ref(`pokerRooms/${roomId}`);
             const publicRef = roomRef.child('public');
+            const directoryRef = onlineFirebaseDatabase.ref(`pokerRoomDirectory/${roomId}`);
             const room = {
                 status: 'waiting',
                 hostUid: user.uid,
@@ -3538,10 +3658,24 @@
                 playerOrder: [user.uid],
                 game: null
             };
+            const directory = {
+                hostUid: user.uid,
+                hostName: name,
+                status: 'waiting',
+                createdAt: firebase.database.ServerValue.TIMESTAMP,
+                playerCount: 1
+            };
             const result = await publicRef.transaction(current => current === null ? room : undefined, undefined, false);
-            if (!result.committed) throw new Error('部屋コードが重複しました。もう一度お試しください。');
-            document.getElementById('poker-room-code').value = roomCode;
-            attachPokerRoom({ code: roomCode, roomRef, publicRef, uid: user.uid, isHost: true, name });
+            if (!result.committed) throw new Error('部屋を作成できませんでした。もう一度お試しください。');
+            try {
+                await directoryRef.set(directory);
+                await directoryRef.onDisconnect().remove();
+            } catch (error) {
+                await publicRef.remove();
+                throw error;
+            }
+            attachPokerRoom({ id: roomId, roomRef, publicRef, directoryRef, uid: user.uid, isHost: true, name });
+            setPokerStatus('部屋を作成しました。参加者を待っています。');
         } catch (error) {
             console.error('ポーカー部屋を作成できませんでした。', error);
             setPokerStatus(pokerFirebaseErrorMessage(error, '部屋作成'));
@@ -3551,16 +3685,14 @@
         }
     }
 
-    async function joinPokerRoom() {
+    async function joinPokerRoom(roomId) {
         if (onlineRequestPending || onlinePokerRoom || localPokerRoom) return;
+        if (!roomId) return;
         onlineRequestPending = true;
-        document.getElementById('poker-join-button').disabled = true;
         try {
             const user = await getOnlineFirebaseUser();
             const name = pokerName();
-            const roomCode = pokerRoomCode();
-            if (!/^[A-Z2-9]{6}$/.test(roomCode)) throw new Error('6桁の部屋コードを入力してください。');
-            const roomRef = onlineFirebaseDatabase.ref(`pokerRooms/${roomCode}`);
+            const roomRef = onlineFirebaseDatabase.ref(`pokerRooms/${roomId}`);
             const publicRef = roomRef.child('public');
             const readJoinableRoom = async () => {
                 const snapshot = await publicRef.once('value');
@@ -3625,13 +3757,18 @@
                     throw new Error(abortReason || '参加を確定できませんでした。時間をおいて、もう一度お試しください。');
                 }
             }
-            attachPokerRoom({ code: roomCode, roomRef, publicRef, uid: user.uid, isHost: false, name });
+            const directoryRef = onlineFirebaseDatabase.ref(`pokerRoomDirectory/${roomId}`);
+            try {
+                await directoryRef.child('playerCount').set(Object.keys(result.snapshot.val().players || {}).length);
+            } catch (error) {
+                console.error('部屋一覧の参加人数を更新できませんでした。', error);
+            }
+            attachPokerRoom({ id: roomId, roomRef, publicRef, directoryRef, uid: user.uid, isHost: false, name });
         } catch (error) {
             console.error('ポーカー部屋に参加できませんでした。', error);
             setPokerStatus(pokerFirebaseErrorMessage(error, '部屋参加'));
         } finally {
             onlineRequestPending = false;
-            document.getElementById('poker-join-button').disabled = false;
         }
     }
 
