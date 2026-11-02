@@ -1281,6 +1281,7 @@
     }
     let pokerAdminWinsFixed = localStorage.getItem('poker-admin-wins-fixed') === 'true';
     let pokerDealerBusy = false;
+    let pokerDealerRerun = false;
     let pokerDealerTimer = null;
     let onlineFirebaseAuth = null;
     let onlineFirebaseDatabase = null;
@@ -3864,6 +3865,7 @@
         clearTimeout(pokerDealerTimer);
         pokerDealerTimer = null;
         pokerDealerBusy = false;
+        pokerDealerRerun = false;
         room.presenceRef.onDisconnect().cancel().catch(error => {
             console.error('退出時の接続状態を解除できませんでした。', error);
         });
@@ -4596,7 +4598,11 @@
 
     function processPokerHostState(room) {
         const game = room.public?.game;
-        if (!game || pokerDealerBusy) return;
+        if (!game) return;
+        if (pokerDealerBusy) {
+            pokerDealerRerun = true;
+            return;
+        }
         const disconnectedTurnUid = ['preflop', 'flop', 'turn', 'river'].includes(game.phase)
             && game.turnUid && room.public.players?.[game.turnUid]?.connected === false
             ? game.turnUid : null;
@@ -4605,13 +4611,13 @@
             foldDisconnectedPokerPlayer(room, disconnectedTurnUid).catch(error => {
                 console.error('切断したプレイヤーのターンを進められませんでした。', error);
                 setPokerStatus('切断したプレイヤーのターン処理に失敗しました。');
-            }).finally(() => { pokerDealerBusy = false; });
+            }).finally(() => finishPokerHostAction(room));
         } else if (game.phase === 'deal') {
             pokerDealerBusy = true;
             dealPokerStreet(room, game).catch(error => {
                 console.error('コミュニティカードを配れませんでした。', error);
                 setPokerStatus('コミュニティカードを配れませんでした。再接続してください。');
-            }).finally(() => { pokerDealerBusy = false; });
+            }).finally(() => finishPokerHostAction(room));
         } else if (game.phase === 'showdown') {
             const eligible = (room.public.playerOrder || []).filter(uid => {
                 const player = room.public.players?.[uid];
@@ -4622,18 +4628,27 @@
                 settlePokerShowdown(room, game, eligible).catch(error => {
                     console.error('ショーダウンを精算できませんでした。', error);
                     setPokerStatus('ショーダウンを精算できませんでした。');
-                }).finally(() => { pokerDealerBusy = false; });
+                }).finally(() => finishPokerHostAction(room));
             }
         } else if (game.phase === 'between-hands' && room.public.status === 'playing') {
             clearTimeout(pokerDealerTimer);
             pokerDealerTimer = setTimeout(() => {
                 if (onlinePokerRoom === room && room.public?.game?.phase === 'between-hands') {
+                    pokerDealerBusy = true;
                     startNextPokerHand(room).catch(error => {
                         console.error('次のハンドを開始できませんでした。', error);
                         setPokerStatus('次のハンドを開始できませんでした。');
-                    });
+                    }).finally(() => finishPokerHostAction(room));
                 }
             }, 2500);
+        }
+    }
+
+    function finishPokerHostAction(room) {
+        pokerDealerBusy = false;
+        if (pokerDealerRerun && onlinePokerRoom === room) {
+            pokerDealerRerun = false;
+            processPokerHostState(room);
         }
     }
 
