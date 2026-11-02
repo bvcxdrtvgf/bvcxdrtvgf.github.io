@@ -3574,8 +3574,7 @@
                 throw new Error('この部屋は満員です（最大9人）。');
             }
             const result = await publicRef.transaction(current => {
-                if (!current || current.hostUid !== roomData.hostUid || current.status !== 'waiting'
-                    && !current.players?.[user.uid]) return;
+                if (!current) return;
                 const players = current.players || {};
                 if (players[user.uid]) {
                     players[user.uid].connected = true;
@@ -3598,7 +3597,20 @@
                 current.playerOrder = [...(current.playerOrder || []), user.uid];
                 return current;
             }, undefined, false);
-            if (!result.committed) throw new Error('部屋の状態が変わりました。コードを確認して、もう一度参加してください。');
+            if (!result.committed) {
+                const latestSnapshot = await publicRef.once('value');
+                const latest = latestSnapshot.val();
+                if (!latestSnapshot.exists() || !latest) {
+                    throw new Error('部屋が見つかりません。コードを確認してください。');
+                }
+                if (latest.status !== 'waiting' && !latest.players?.[user.uid]) {
+                    throw new Error('この部屋では参加者を募集していません。');
+                }
+                if (!latest.players?.[user.uid] && Object.keys(latest.players || {}).length >= 9) {
+                    throw new Error('この部屋は満員です（最大9人）。');
+                }
+                throw new Error('参加を確定できませんでした。時間をおいて、もう一度お試しください。');
+            }
             attachPokerRoom({ code: roomCode, roomRef, publicRef, uid: user.uid, isHost: false, name });
         } catch (error) {
             console.error('ポーカー部屋に参加できませんでした。', error);
