@@ -3562,12 +3562,20 @@
             if (!/^[A-Z2-9]{6}$/.test(roomCode)) throw new Error('6桁の部屋コードを入力してください。');
             const roomRef = onlineFirebaseDatabase.ref(`pokerRooms/${roomCode}`);
             const publicRef = roomRef.child('public');
-            let joinError = '';
+            const roomSnapshot = await publicRef.once('value');
+            const roomData = roomSnapshot.val();
+            if (!roomSnapshot.exists() || !roomData) {
+                throw new Error('部屋が見つかりません。コードを確認してください。');
+            }
+            if (roomData.status !== 'waiting' && !roomData.players?.[user.uid]) {
+                throw new Error('この部屋では参加者を募集していません。');
+            }
+            if (!roomData.players?.[user.uid] && Object.keys(roomData.players || {}).length >= 9) {
+                throw new Error('この部屋は満員です（最大9人）。');
+            }
             const result = await publicRef.transaction(current => {
-                if (!current) {
-                    joinError = '部屋が見つかりません。';
-                    return;
-                }
+                if (!current || current.hostUid !== roomData.hostUid || current.status !== 'waiting'
+                    && !current.players?.[user.uid]) return;
                 const players = current.players || {};
                 if (players[user.uid]) {
                     players[user.uid].connected = true;
@@ -3576,14 +3584,7 @@
                     current.players = players;
                     return current;
                 }
-                if (current.status !== 'waiting') {
-                    joinError = 'この部屋では参加者を募集していません。';
-                    return;
-                }
-                if (Object.keys(players).length >= 9) {
-                    joinError = 'この部屋は満員です（最大9人）。';
-                    return;
-                }
+                if (current.status !== 'waiting' || Object.keys(players).length >= 9) return;
                 players[user.uid] = {
                     name,
                     chips: 200,
@@ -3597,7 +3598,7 @@
                 current.playerOrder = [...(current.playerOrder || []), user.uid];
                 return current;
             }, undefined, false);
-            if (!result.committed) throw new Error(joinError || '部屋に参加できませんでした。');
+            if (!result.committed) throw new Error('部屋の状態が変わりました。コードを確認して、もう一度参加してください。');
             attachPokerRoom({ code: roomCode, roomRef, publicRef, uid: user.uid, isHost: false, name });
         } catch (error) {
             console.error('ポーカー部屋に参加できませんでした。', error);
