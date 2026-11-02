@@ -807,7 +807,7 @@
         <ul id="poker-online-roster-list"></ul>
     </aside>
     <h1 id="poker-title">テキサスホールデム</h1>
-    <p>オンラインは2〜9人、CPU戦は1対1です。各プレイヤー1,000チップ、SB 10 / BB 20で開始し、チップが0になると脱落します。オンライン対戦ではホストが接続を維持してください。</p>
+    <p>オンラインは2〜9人、CPU戦は1対1です。各プレイヤー200チップ、SB 10 / BB 20で開始し、チップが0になると脱落します。オンライン対戦ではホストが接続を維持してください。</p>
     <p>ソリティアで解放・選択中のキャラカードを使用します。キャラカードの解放と切り替えはソリティアのショップで行えます。</p>
     <div id="poker-online-lobby" class="poker-lobby">
         <label for="poker-player-name">名前</label>
@@ -838,6 +838,11 @@
             <button type="button" onclick="unlockPokerAdminMode()">認証</button>
         </div>
         <div id="poker-admin-settings" class="poker-lobby" hidden>
+            <label for="poker-admin-target">次のCPU戦で役を成立させる相手</label>
+            <select id="poker-admin-target" class="difficulty-select">
+                <option value="player">自分</option>
+                <option value="cpu">CPU</option>
+            </select>
             <label for="poker-admin-hand">次のCPU戦で成立させる役</label>
             <select id="poker-admin-hand" class="difficulty-select">
                 <option value="royal-flush">ロイヤルフラッシュ</option>
@@ -851,6 +856,14 @@
                 <option value="one-pair">ワンペア</option>
                 <option value="high-card">ハイカード</option>
             </select>
+            <label for="poker-admin-total-wins">実績用の累計勝利数</label>
+            <input id="poker-admin-total-wins" class="bet-input" type="number" min="0" step="1">
+            <button type="button" onclick="setPokerAdminTotalWins()">勝利数を変更</button>
+            <label for="poker-admin-display-wins">CPU戦の表示勝利数</label>
+            <input id="poker-admin-display-wins" class="bet-input" type="number" min="0" step="1">
+            <button type="button" onclick="setPokerAdminDisplayWins()">表示勝利数を変更</button>
+            <label for="poker-admin-wins-fixed">勝利数を固定</label>
+            <input id="poker-admin-wins-fixed" type="checkbox" onchange="setPokerAdminWinsFixed(this.checked)">
             <button type="button" onclick="disablePokerAdminMode()">管理者モードを終了</button>
         </div>
     </section>
@@ -1213,7 +1226,7 @@
     const pokerAchievementStorageKey = 'poker-achievements-v1';
     const pokerAchievements = [
         { id: 'welcome', title: '戦場へようこそ', description: 'ポーカーのCPU戦またはオンライン戦に参加する' },
-        { id: 'straight', title: '綺麗に並んでいる', description: 'ストレート以上の役を完成させる' },
+        { id: 'straight', title: '綺麗に並んでいる', description: 'ストレートを揃える' },
         { id: 'flush', title: 'うわ、眩しい！', description: 'フラッシュまたはストレートフラッシュを完成させる' },
         { id: 'full-house', title: '満員です', description: 'フルハウスを完成させる' },
         { id: 'four-of-a-kind', title: 'ザ・ペア', description: 'フォーカードを完成させる' },
@@ -1225,6 +1238,11 @@
     ];
     let pokerAchievementProfile = null;
     let pokerAdminModeEnabled = false;
+    let pokerAdminDisplayWins = Number(localStorage.getItem('poker-admin-display-wins'));
+    if (!Number.isSafeInteger(pokerAdminDisplayWins) || pokerAdminDisplayWins < 0) {
+        pokerAdminDisplayWins = 0;
+    }
+    let pokerAdminWinsFixed = localStorage.getItem('poker-admin-wins-fixed') === 'true';
     let pokerDealerBusy = false;
     let pokerDealerTimer = null;
     let onlineFirebaseAuth = null;
@@ -3109,24 +3127,28 @@
         awardPokerAchievement('welcome');
         const selectedAchievement = loadPokerAchievementProfile().selected;
         const players = {
-            [humanUid]: { name, chips: 1000, wins: 0, achievement: selectedAchievement, connected: true, bet: 0, contribution: 0 },
-            [cpuUid]: { name: `CPU（${{ easy: '簡単', normal: '普通', hard: '難しい', new: 'ナイトメア' }[difficulty]}）`, chips: 1000, wins: 0, connected: true, bet: 0, contribution: 0 }
+            [humanUid]: { name, chips: 200, wins: pokerAdminDisplayWins, achievement: selectedAchievement, connected: true, bet: 0, contribution: 0 },
+            [cpuUid]: { name: `CPU（${{ easy: '簡単', normal: '普通', hard: '難しい', new: 'ナイトメア' }[difficulty]}）`, chips: 200, wins: 0, connected: true, bet: 0, contribution: 0 }
         };
         const playerOrder = [humanUid, cpuUid];
         const deck = makePokerDeck();
         const forcedCards = pokerAdminModeEnabled
             ? makePokerAdminHand(document.getElementById('poker-admin-hand').value)
             : null;
+        const forcedTargetUid = document.getElementById('poker-admin-target').value === 'cpu'
+            ? cpuUid : humanUid;
         let boardCards = null;
         let holes;
         if (forcedCards) {
             const forcedCardIds = new Set(forcedCards.map(card => `${card.suit.name}:${card.rank}`));
             const remainingDeck = deck.filter(card => !forcedCardIds.has(`${card.suit.name}:${card.rank}`));
-            const playerCards = forcedCards.slice(0, 2);
+            const targetCards = forcedCards.slice(0, 2);
             boardCards = forcedCards.slice(2);
             holes = {
-                [humanUid]: playerCards,
-                [cpuUid]: [remainingDeck.pop(), remainingDeck.pop()]
+                [forcedTargetUid]: targetCards,
+                [forcedTargetUid === humanUid ? cpuUid : humanUid]: [
+                    remainingDeck.pop(), remainingDeck.pop()
+                ]
             };
             const burnCards = remainingDeck.splice(0, 3);
             remainingDeck.push(
@@ -3146,6 +3168,7 @@
             code: 'CPU戦',
             cpuUid,
             difficulty,
+            winsFixed: pokerAdminWinsFixed,
             achievementOutcomeProcessed: false,
             public: { status: 'playing', players, playerOrder, game },
             holeCards: holes[humanUid],
@@ -3351,7 +3374,7 @@
         const holeCards = room.holeCards || [];
         if (game.phase === 'showdown' && board.length === 5 && holeCards.length === 2) {
             const hand = bestPokerHand([...holeCards, ...board]);
-            if (hand.rank >= 4) awardPokerAchievement('straight');
+            if (hand.rank === 4) awardPokerAchievement('straight');
             if (hand.rank === 5 || hand.rank === 8) awardPokerAchievement('flush');
             if (hand.rank === 6) awardPokerAchievement('full-house');
             if (hand.rank === 7) awardPokerAchievement('four-of-a-kind');
@@ -3359,7 +3382,7 @@
             if (hand.name === 'ロイヤルフラッシュ') awardPokerAchievement('royal-flush');
         }
 
-        if (['between-hands', 'finished'].includes(game.phase)
+        if (!room.winsFixed && ['between-hands', 'finished'].includes(game.phase)
             && game.handId && game.winners?.includes(room.uid)
             && profile.lastProcessedHandId !== game.handId) {
             profile.lastProcessedHandId = game.handId;
@@ -3416,8 +3439,68 @@
         pokerAdminModeEnabled = true;
         document.getElementById('poker-admin-login').hidden = true;
         document.getElementById('poker-admin-settings').hidden = false;
+        document.getElementById('poker-admin-total-wins').value =
+            loadPokerAchievementProfile().totalWins;
+        document.getElementById('poker-admin-display-wins').value = pokerAdminDisplayWins;
+        document.getElementById('poker-admin-wins-fixed').checked = pokerAdminWinsFixed;
         document.getElementById('poker-admin-toggle').textContent = 'CPU戦管理者モード: ON';
-        setPokerStatus('管理者モードです。選んだ役は次のCPU戦の最初のハンドに適用されます。');
+        setPokerStatus('管理者モードです。対象と役は次のCPU戦の最初のハンドに適用されます。');
+    }
+
+    function setPokerAdminTotalWins() {
+        if (!pokerAdminModeEnabled) {
+            setPokerStatus('管理者認証後に操作してください。');
+            return;
+        }
+        const input = document.getElementById('poker-admin-total-wins');
+        if (!input.value.trim()) {
+            setPokerStatus('累計勝利数は0以上の整数で入力してください。');
+            return;
+        }
+        const totalWins = Number(input.value);
+        if (!Number.isSafeInteger(totalWins) || totalWins < 0) {
+            setPokerStatus('累計勝利数は0以上の整数で入力してください。');
+            return;
+        }
+        const profile = loadPokerAchievementProfile();
+        profile.totalWins = totalWins;
+        savePokerAchievementProfile();
+        if (totalWins >= 1000) awardPokerAchievement('thousand-wins');
+        renderPokerAchievements();
+        setPokerStatus(`実績用の累計勝利数を${totalWins}に変更しました。`);
+    }
+
+    function setPokerAdminDisplayWins() {
+        if (!pokerAdminModeEnabled) {
+            setPokerStatus('管理者認証後に操作してください。');
+            return;
+        }
+        const input = document.getElementById('poker-admin-display-wins');
+        const displayWins = Number(input.value);
+        if (!input.value.trim() || !Number.isSafeInteger(displayWins) || displayWins < 0) {
+            setPokerStatus('表示勝利数は0以上の整数で入力してください。');
+            return;
+        }
+        pokerAdminDisplayWins = displayWins;
+        localStorage.setItem('poker-admin-display-wins', String(displayWins));
+        if (localPokerRoom?.public.players[localPokerRoom.uid]) {
+            localPokerRoom.public.players[localPokerRoom.uid].wins = displayWins;
+            renderPokerRoom(localPokerRoom);
+        }
+        setPokerStatus(`CPU戦の表示勝利数を${displayWins}に変更しました。`);
+    }
+
+    function setPokerAdminWinsFixed(fixed) {
+        if (!pokerAdminModeEnabled) {
+            document.getElementById('poker-admin-wins-fixed').checked = pokerAdminWinsFixed;
+            setPokerStatus('管理者認証後に操作してください。');
+            return;
+        }
+        pokerAdminWinsFixed = fixed;
+        localStorage.setItem('poker-admin-wins-fixed', String(fixed));
+        setPokerStatus(fixed
+            ? '次のCPU対戦ではハンド勝利数と実績用累計勝利数を固定します。'
+            : '次のCPU対戦ではハンド勝利数と実績用累計勝利数を記録します。');
     }
 
     function disablePokerAdminMode() {
@@ -3451,7 +3534,7 @@
                 hostUid: user.uid,
                 hostName: name,
                 createdAt: firebase.database.ServerValue.TIMESTAMP,
-                players: { [user.uid]: { name, chips: 1000, wins: 0, achievement: loadPokerAchievementProfile().selected, connected: true, bet: 0, contribution: 0 } },
+                players: { [user.uid]: { name, chips: 200, wins: 0, achievement: loadPokerAchievementProfile().selected, connected: true, bet: 0, contribution: 0 } },
                 playerOrder: [user.uid],
                 game: null
             };
@@ -3503,7 +3586,7 @@
                 }
                 players[user.uid] = {
                     name,
-                    chips: 1000,
+                    chips: 200,
                     wins: 0,
                     achievement: loadPokerAchievementProfile().selected,
                     connected: true,
@@ -3952,7 +4035,7 @@
             return candidate && candidate.connected !== false && !candidate.folded;
         });
         if (remaining.length === 1) {
-            payPokerFoldWinner(current, remaining[0]);
+            payPokerFoldWinner(current, remaining[0], room.winsFixed);
         } else {
             const ableToAct = remaining.filter(playerUid => current.players[playerUid].chips > 0);
             const roundComplete = ableToAct.length <= 1 || ableToAct.every(playerUid =>
@@ -4117,7 +4200,7 @@
         const winners = comparison === 0
             ? evaluations.map(result => result.uid)
             : [evaluations[comparison > 0 ? 0 : 1].uid];
-        recordPokerHandWinners(room.public.players, winners);
+        recordPokerHandWinners(room.public.players, winners, room.winsFixed);
         const share = Math.floor(game.pot / winners.length);
         winners.forEach(uid => { room.public.players[uid].chips += share; });
         if (winners.length === 2 && game.pot % 2) {
@@ -4265,16 +4348,17 @@
         }
     }
 
-    function recordPokerHandWinners(players, winnerUids) {
+    function recordPokerHandWinners(players, winnerUids, fixed = false) {
+        if (fixed) return;
         [...new Set(winnerUids)].forEach(uid => {
             if (players[uid]) players[uid].wins = (Number(players[uid].wins) || 0) + 1;
         });
     }
 
-    function payPokerFoldWinner(data, winnerUid) {
+    function payPokerFoldWinner(data, winnerUid, winsFixed = false) {
         const game = data.game;
         const winner = data.players[winnerUid];
-        recordPokerHandWinners(data.players, [winnerUid]);
+        recordPokerHandWinners(data.players, [winnerUid], winsFixed);
         winner.chips += game.pot;
         game.resultText = `${winner.name} が全員のフォールドでポット ${game.pot} を獲得しました。`;
         game.winners = [winnerUid];
