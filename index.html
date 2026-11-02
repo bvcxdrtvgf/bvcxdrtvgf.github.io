@@ -140,6 +140,9 @@
         .poker-admin {
             margin: 12px auto;
         }
+        .poker-admin .poker-lobby[hidden] {
+            display: none;
+        }
         .poker-table {
             margin: 18px auto;
             padding: 14px;
@@ -153,6 +156,56 @@
             gap: 8px;
             flex-wrap: wrap;
             margin-bottom: 14px;
+        }
+        .poker-achievement-dialog {
+            width: min(560px, calc(100% - 48px));
+            max-height: min(80vh, 640px);
+            padding: 18px;
+            border: 1px solid rgba(255,255,255,0.7);
+            border-radius: 10px;
+            background: #17620b;
+            color: white;
+        }
+        .poker-achievement-dialog::backdrop {
+            background: rgba(0,0,0,0.65);
+        }
+        .poker-achievement-dialog h2 {
+            margin: 0 0 8px;
+        }
+        .poker-achievement-buttons {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+            gap: 4px 12px;
+            margin: 12px 0;
+        }
+        .poker-achievement-buttons button {
+            padding: 8px;
+            text-align: left;
+        }
+        .poker-achievement-buttons button[aria-pressed="true"] {
+            outline: 2px solid #ffe082;
+        }
+        .poker-achievement-buttons button:disabled {
+            opacity: 0.65;
+            cursor: not-allowed;
+        }
+        .poker-achievement-dialog-footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+        .poker-achievement-badge {
+            display: inline-block;
+            margin-left: 6px;
+            padding: 1px 6px;
+            border: 1px solid #ffe082;
+            border-radius: 10px;
+            color: #ffe082;
+            font-size: 11px;
+            font-weight: normal;
+            vertical-align: middle;
         }
         .poker-player {
             min-width: 120px;
@@ -763,6 +816,7 @@
         <label for="poker-room-code">部屋コード</label>
         <input id="poker-room-code" class="bet-input" type="text" maxlength="6" autocomplete="off" placeholder="6桁コード" aria-label="ポーカー部屋コード">
         <button id="poker-join-button" type="button" onclick="joinPokerRoom()">参加</button>
+        <button id="poker-achievement-open" type="button" onclick="openPokerAchievementDialog()">実績</button>
         <button id="poker-start-button" type="button" onclick="startPokerTournament()" hidden>対戦開始</button>
         <button id="poker-leave-button" type="button" onclick="leavePokerRoom()" hidden>部屋を退出</button>
     </div>
@@ -802,6 +856,15 @@
     </section>
     <button class="shop-toggle-button" type="button" onclick="openMusicMenu()">音楽</button>
     <p>CPUは難易度が高いほど役の完成見込みを詳しく評価し、強い手を狙います。</p>
+    <dialog id="poker-achievement-dialog" class="poker-achievement-dialog" aria-labelledby="poker-achievement-title">
+        <h2 id="poker-achievement-title">ポーカー実績</h2>
+        <p id="poker-achievement-summary" aria-live="polite"></p>
+        <div id="poker-achievement-buttons" class="poker-achievement-buttons"></div>
+        <div class="poker-achievement-dialog-footer">
+            <span>獲得済み実績を選ぶと名前の横に表示されます。</span>
+            <button type="button" onclick="document.getElementById('poker-achievement-dialog').close()">閉じる</button>
+        </div>
+    </dialog>
     <section class="poker-table" aria-label="ポーカーテーブル">
         <div id="poker-players" class="poker-players"></div>
         <p id="poker-pot" class="poker-pot"></p>
@@ -1147,6 +1210,20 @@
     let onlineMatch = null;
     let onlinePokerRoom = null;
     let localPokerRoom = null;
+    const pokerAchievementStorageKey = 'poker-achievements-v1';
+    const pokerAchievements = [
+        { id: 'welcome', title: '戦場へようこそ', description: 'ポーカーのCPU戦またはオンライン戦に参加する' },
+        { id: 'straight', title: '綺麗に並んでいる', description: 'ストレート以上の役を完成させる' },
+        { id: 'flush', title: 'うわ、眩しい！', description: 'フラッシュまたはストレートフラッシュを完成させる' },
+        { id: 'full-house', title: '満員です', description: 'フルハウスを完成させる' },
+        { id: 'four-of-a-kind', title: 'ザ・ペア', description: 'フォーカードを完成させる' },
+        { id: 'straight-flush', title: 'まっすぐな光', description: 'ストレートフラッシュを完成させる' },
+        { id: 'royal-flush', title: 'みよ、これが王の輝きだ！', description: 'ロイヤルフラッシュを完成させる' },
+        { id: 'defeat', title: '敗北', description: 'CPU戦またはオンライン戦に負ける' },
+        { id: 'thousand-wins', title: '運を超えて', description: 'ポーカーで累計1,000ハンド勝利する' },
+        { id: 'cpu-all-difficulties', title: 'グッド・ディーラー', description: 'CPU全4難易度（簡単・普通・難しい・ナイトメア）に勝つ' }
+    ];
+    let pokerAchievementProfile = null;
     let pokerAdminModeEnabled = false;
     let pokerDealerBusy = false;
     let pokerDealerTimer = null;
@@ -2985,6 +3062,7 @@
         setGameContentInert(false);
         document.getElementById('poker-player-name').value =
             localStorage.getItem('poker-player-name') || '';
+        renderPokerAchievements();
         document.getElementById('poker-players').replaceChildren();
         document.getElementById('poker-board').replaceChildren();
         document.getElementById('poker-player-hand').replaceChildren();
@@ -3028,8 +3106,10 @@
 
         const humanUid = 'local-human';
         const cpuUid = 'local-cpu';
+        awardPokerAchievement('welcome');
+        const selectedAchievement = loadPokerAchievementProfile().selected;
         const players = {
-            [humanUid]: { name, chips: 1000, wins: 0, connected: true, bet: 0, contribution: 0 },
+            [humanUid]: { name, chips: 1000, wins: 0, achievement: selectedAchievement, connected: true, bet: 0, contribution: 0 },
             [cpuUid]: { name: `CPU（${{ easy: '簡単', normal: '普通', hard: '難しい', new: 'ナイトメア' }[difficulty]}）`, chips: 1000, wins: 0, connected: true, bet: 0, contribution: 0 }
         };
         const playerOrder = [humanUid, cpuUid];
@@ -3066,6 +3146,7 @@
             code: 'CPU戦',
             cpuUid,
             difficulty,
+            achievementOutcomeProcessed: false,
             public: { status: 'playing', players, playerOrder, game },
             holeCards: holes[humanUid],
             holes,
@@ -3151,6 +3232,159 @@
         return name;
     }
 
+    function loadPokerAchievementProfile() {
+        if (pokerAchievementProfile) return pokerAchievementProfile;
+        const stored = JSON.parse(localStorage.getItem(pokerAchievementStorageKey) || '{}');
+        const achievementIds = new Set(pokerAchievements.map(achievement => achievement.id));
+        const unlocked = Array.isArray(stored.unlocked)
+            ? [...new Set(stored.unlocked.filter(id => achievementIds.has(id)))]
+            : [];
+        pokerAchievementProfile = {
+            unlocked,
+            selected: achievementIds.has(stored.selected) && unlocked.includes(stored.selected)
+                ? stored.selected : '',
+            totalWins: Number.isSafeInteger(stored.totalWins) && stored.totalWins >= 0
+                ? stored.totalWins : 0,
+            cpuDifficulties: Array.isArray(stored.cpuDifficulties)
+                ? [...new Set(stored.cpuDifficulties.filter(difficulty =>
+                    ['easy', 'normal', 'hard', 'new'].includes(difficulty)))]
+                : [],
+            lastProcessedHandId: typeof stored.lastProcessedHandId === 'string'
+                ? stored.lastProcessedHandId : ''
+        };
+        return pokerAchievementProfile;
+    }
+
+    function savePokerAchievementProfile() {
+        localStorage.setItem(pokerAchievementStorageKey, JSON.stringify(loadPokerAchievementProfile()));
+    }
+
+    function pokerAchievementTitle(id) {
+        return pokerAchievements.find(achievement => achievement.id === id)?.title || '';
+    }
+
+    function renderPokerAchievements() {
+        const profile = loadPokerAchievementProfile();
+        const selected = profile.selected;
+        const achievementButton = document.getElementById('poker-achievement-open');
+        achievementButton.textContent = `実績 ${profile.unlocked.length}/${pokerAchievements.length}`;
+        document.getElementById('poker-achievement-summary').textContent =
+            `獲得 ${profile.unlocked.length}/${pokerAchievements.length} · 累計勝利 ${profile.totalWins}/1,000 · CPU制覇 ${profile.cpuDifficulties.length}/4`;
+
+        const buttons = document.getElementById('poker-achievement-buttons');
+        buttons.replaceChildren();
+        const noBadge = document.createElement('button');
+        noBadge.type = 'button';
+        noBadge.textContent = '表示しない';
+        noBadge.setAttribute('aria-pressed', String(!selected));
+        noBadge.addEventListener('click', () => selectPokerAchievement(''));
+        buttons.append(noBadge);
+        pokerAchievements.forEach(achievement => {
+            const button = document.createElement('button');
+            button.type = 'button';
+            const progress = achievement.id === 'thousand-wins'
+                ? ` (${Math.min(profile.totalWins, 1000)}/1,000)`
+                : achievement.id === 'cpu-all-difficulties'
+                    ? ` (${profile.cpuDifficulties.length}/4)`
+                    : '';
+            const unlocked = profile.unlocked.includes(achievement.id);
+            button.textContent = `${unlocked ? '✓' : '🔒'} ${achievement.title} — ${achievement.description}${progress}`;
+            button.disabled = !unlocked;
+            button.setAttribute('aria-pressed', String(selected === achievement.id));
+            button.addEventListener('click', () => selectPokerAchievement(achievement.id));
+            buttons.append(button);
+        });
+    }
+
+    function openPokerAchievementDialog() {
+        renderPokerAchievements();
+        document.getElementById('poker-achievement-dialog').showModal();
+    }
+
+    function syncPokerAchievementBadge() {
+        const room = onlinePokerRoom;
+        if (!room) return;
+        room.publicRef.child(`players/${room.uid}/achievement`)
+            .set(pokerAchievementProfile.selected || null)
+            .catch(error => {
+                console.error('実績表示を同期できませんでした。', error);
+                setPokerStatus('実績表示の同期に失敗しました。');
+            });
+    }
+
+    function selectPokerAchievement(id) {
+        const profile = loadPokerAchievementProfile();
+        if (id && !profile.unlocked.includes(id)) {
+            renderPokerAchievements();
+            return;
+        }
+        profile.selected = id;
+        savePokerAchievementProfile();
+        if (localPokerRoom?.public.players[localPokerRoom.uid]) {
+            localPokerRoom.public.players[localPokerRoom.uid].achievement = id || '';
+            renderPokerRoom(localPokerRoom);
+        }
+        if (onlinePokerRoom?.public?.players?.[onlinePokerRoom.uid]) {
+            onlinePokerRoom.public.players[onlinePokerRoom.uid].achievement = id || '';
+            renderPokerRoom(onlinePokerRoom);
+        }
+        syncPokerAchievementBadge();
+        renderPokerAchievements();
+        if (document.getElementById('poker-achievement-dialog').open) {
+            document.getElementById('poker-achievement-dialog').close();
+        }
+    }
+
+    function awardPokerAchievement(id) {
+        const profile = loadPokerAchievementProfile();
+        if (profile.unlocked.includes(id)) return;
+        profile.unlocked.push(id);
+        savePokerAchievementProfile();
+        renderPokerAchievements();
+    }
+
+    function processPokerAchievements(room) {
+        const game = room.public?.game;
+        if (!game) return;
+        const profile = loadPokerAchievementProfile();
+        const board = (game.board || []).map(deserializePokerCard).filter(Boolean);
+        const holeCards = room.holeCards || [];
+        if (game.phase === 'showdown' && board.length === 5 && holeCards.length === 2) {
+            const hand = bestPokerHand([...holeCards, ...board]);
+            if (hand.rank >= 4) awardPokerAchievement('straight');
+            if (hand.rank === 5 || hand.rank === 8) awardPokerAchievement('flush');
+            if (hand.rank === 6) awardPokerAchievement('full-house');
+            if (hand.rank === 7) awardPokerAchievement('four-of-a-kind');
+            if (hand.rank === 8) awardPokerAchievement('straight-flush');
+            if (hand.name === 'ロイヤルフラッシュ') awardPokerAchievement('royal-flush');
+        }
+
+        if (['between-hands', 'finished'].includes(game.phase)
+            && game.handId && game.winners?.includes(room.uid)
+            && profile.lastProcessedHandId !== game.handId) {
+            profile.lastProcessedHandId = game.handId;
+            profile.totalWins++;
+            savePokerAchievementProfile();
+            if (profile.totalWins >= 1000) awardPokerAchievement('thousand-wins');
+            renderPokerAchievements();
+        }
+
+        if (room.public.status === 'finished' && !room.achievementOutcomeProcessed) {
+            room.achievementOutcomeProcessed = true;
+            if (room.public.winnerUid !== room.uid) {
+                awardPokerAchievement('defeat');
+            } else if (room.cpuUid === room.public.playerOrder?.find(uid => uid !== room.uid)) {
+                profile.cpuDifficulties = [...new Set([...profile.cpuDifficulties, room.difficulty])];
+                savePokerAchievementProfile();
+                if (['easy', 'normal', 'hard', 'new'].every(difficulty =>
+                    profile.cpuDifficulties.includes(difficulty))) {
+                    awardPokerAchievement('cpu-all-difficulties');
+                }
+                renderPokerAchievements();
+            }
+        }
+    }
+
     function pokerRoomCode() {
         return document.getElementById('poker-room-code').value.trim().toUpperCase();
     }
@@ -3217,7 +3451,7 @@
                 hostUid: user.uid,
                 hostName: name,
                 createdAt: firebase.database.ServerValue.TIMESTAMP,
-                players: { [user.uid]: { name, chips: 1000, wins: 0, connected: true, bet: 0, contribution: 0 } },
+                players: { [user.uid]: { name, chips: 1000, wins: 0, achievement: loadPokerAchievementProfile().selected, connected: true, bet: 0, contribution: 0 } },
                 playerOrder: [user.uid],
                 game: null
             };
@@ -3255,6 +3489,7 @@
                 if (players[user.uid]) {
                     players[user.uid].connected = true;
                     players[user.uid].name = name;
+                    players[user.uid].achievement = loadPokerAchievementProfile().selected;
                     current.players = players;
                     return current;
                 }
@@ -3266,7 +3501,15 @@
                     joinError = 'この部屋は満員です（最大9人）。';
                     return;
                 }
-                players[user.uid] = { name, chips: 1000, wins: 0, connected: true, bet: 0, contribution: 0 };
+                players[user.uid] = {
+                    name,
+                    chips: 1000,
+                    wins: 0,
+                    achievement: loadPokerAchievementProfile().selected,
+                    connected: true,
+                    bet: 0,
+                    contribution: 0
+                };
                 current.players = players;
                 current.playerOrder = [...(current.playerOrder || []), user.uid];
                 return current;
@@ -3309,6 +3552,8 @@
             if (room.public?.game?.phase === 'showdown') revealPokerCards(room);
         };
         onlinePokerRoom = room;
+        awardPokerAchievement('welcome');
+        renderPokerAchievements();
         room.presenceRef = room.publicRef.child(`players/${room.uid}`);
         room.presenceRef.onDisconnect().update({ connected: false }).catch(error => {
             console.error('退出時の接続状態を登録できませんでした。', error);
@@ -3525,6 +3770,7 @@
             turnUid: firstTurn,
             acted: [],
             roundNumber,
+            handId: `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`,
             revealedHands: {},
             history: [`${players[smallBlindUid].name} がSB10、${players[bigBlindUid].name} がBB20を支払いました。`]
         };
@@ -3569,9 +3815,19 @@
         });
     }
 
+    function appendPokerAchievementBadge(parent, id) {
+        const title = pokerAchievementTitle(id);
+        if (!title) return;
+        const badge = document.createElement('span');
+        badge.className = 'poker-achievement-badge';
+        badge.textContent = title;
+        parent.append(badge);
+    }
+
     function renderPokerRoom(room) {
         const data = room.public;
         if (!data) return;
+        processPokerAchievements(room);
         const playerElement = document.getElementById('poker-players');
         playerElement.replaceChildren();
         const game = data.game;
@@ -3590,13 +3846,17 @@
             if (player.folded) element.classList.add('folded');
             const name = document.createElement('strong');
             name.textContent = `${player.name}${uid === room.uid ? '（あなた）' : ''}${uid === game?.dealerUid ? ' · D' : ''}`;
+            appendPokerAchievementBadge(name, player.achievement);
             const detail = document.createElement('div');
             detail.textContent = `${player.chips} チップ · ベット ${player.bet || 0} · 勝利 ${player.wins || 0}${player.allIn ? ' · オールイン' : ''}${player.connected === false ? ' · 退出' : ''}`;
             element.append(name, detail);
             playerElement.append(element);
             if (isOnlineRoom) {
                 const rosterItem = document.createElement('li');
-                rosterItem.textContent = `${player.name}: ${player.wins || 0}勝${player.connected === false ? '（退出）' : ''}`;
+                rosterItem.append(document.createTextNode(
+                    `${player.name}: ${player.wins || 0}勝${player.connected === false ? '（退出）' : ''}`
+                ));
+                appendPokerAchievementBadge(rosterItem, player.achievement);
                 rosterList.append(rosterItem);
             }
         });
