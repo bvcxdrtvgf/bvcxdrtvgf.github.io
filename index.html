@@ -3734,18 +3734,18 @@
                 if (!data.players?.[user.uid] && Object.keys(data.players || {}).length >= 9) {
                     throw new Error('この部屋は満員です（最大9人）。');
                 }
+                return data;
             };
             let result;
             let abortReason = '';
             for (let attempt = 0; attempt < 3; attempt++) {
-                await readJoinableRoom();
+                const previouslyReadRoom = await readJoinableRoom();
                 abortReason = '';
                 result = await publicRef.transaction(current => {
-                    if (!current) {
-                        abortReason = '部屋のデータを読み込めませんでした。';
-                        return;
-                    }
-                    const players = { ...(current.players || {}) };
+                    const latest = current || previouslyReadRoom;
+                    if (!latest) return;
+                    const updated = { ...latest };
+                    const players = { ...(latest.players || {}) };
                     if (players[user.uid]) {
                         players[user.uid] = {
                             ...players[user.uid],
@@ -3753,10 +3753,10 @@
                             name,
                             achievement: loadPokerAchievementProfile().selected
                         };
-                        current.players = players;
-                        return current;
+                        updated.players = players;
+                        return updated;
                     }
-                    if (current.status !== 'waiting') {
+                    if (latest.status !== 'waiting') {
                         abortReason = 'この部屋では参加者を募集していません。';
                         return;
                     }
@@ -3773,12 +3773,12 @@
                         bet: 0,
                         contribution: 0
                     };
-                    current.players = players;
-                    const playerOrder = current.playerOrder || [];
-                    current.playerOrder = playerOrder.includes(user.uid)
+                    updated.players = players;
+                    const playerOrder = latest.playerOrder || [];
+                    updated.playerOrder = playerOrder.includes(user.uid)
                         ? playerOrder
                         : [...playerOrder, user.uid];
-                    return current;
+                    return updated;
                 }, undefined, false);
                 if (result.committed) break;
                 if (attempt === 2) {
@@ -3786,7 +3786,7 @@
                 }
             }
             if (!result?.committed || !result.snapshot.exists()) {
-                throw new Error('参加を確定できませんでした。時間をおいて、もう一度お試しください。');
+                throw new Error(abortReason || '参加を確定できませんでした。時間をおいて、もう一度お試しください。');
             }
             const directoryRef = onlineFirebaseDatabase.ref(`pokerRoomDirectory/${roomId}`);
             try {
