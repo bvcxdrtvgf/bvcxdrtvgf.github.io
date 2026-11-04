@@ -1680,7 +1680,7 @@
         { id: 'dealer', title: 'ディーラー？', description: 'ブラックジャックで1,000勝する', qualifies: () => blackjackWinCount >= 1000 },
         { id: 'small-fortune', title: '小金持ち', description: '勝利でチップを累計500枚獲得する', qualifies: () => blackjackChipsEarned >= 500 },
         { id: 'big-fortune', title: '大金持ち', description: '勝利でチップを累計1,000枚獲得する', qualifies: () => blackjackChipsEarned >= 1000 },
-        { id: 'bank-robber', title: '銀行襲った？', description: '勝利でチップを累計10,000枚獲得する', qualifies: () => blackjackChipsEarned >= 10000 }
+        { id: 'bank-robber', title: '銀行襲った？', description: '勝利でチップを累計404,404,404枚獲得する', qualifies: () => blackjackChipsEarned >= 404404404 }
     ];
     let unlockedBlackjackAchievements = new Set(
         JSON.parse(localStorage.getItem('blackjack-achievements-v1') || '[]')
@@ -3757,7 +3757,7 @@
             const chipTarget = {
                 'small-fortune': '500',
                 'big-fortune': '1,000',
-                'bank-robber': '10,000'
+                'bank-robber': '404,404,404'
             }[achievement.id];
             description.textContent = winTarget
                 ? `${achievement.description}（現在: ${blackjackWinCount}/${winTarget}）`
