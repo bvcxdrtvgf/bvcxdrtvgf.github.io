@@ -1209,7 +1209,7 @@
             <label for="blackjack-admin-chips">所持チップ（ソロ専用）</label>
             <input id="blackjack-admin-chips" class="bet-input" type="number" min="0" step="5">
             <label for="blackjack-admin-vault">預かりチップ（ソロ専用）</label>
-            <input id="blackjack-admin-vault" class="bet-input" type="number" min="0" max="500000000" step="5">
+            <input id="blackjack-admin-vault" class="bet-input" type="number" min="0" max="500000000" step="1">
             <label for="blackjack-admin-wins-fixed">勝利数を固定（オンラインでも有効）</label>
             <input id="blackjack-admin-wins-fixed" type="checkbox">
             <label for="blackjack-admin-online-chips-fixed">自分のオンラインチップを固定</label>
@@ -3661,9 +3661,9 @@
             return;
         }
         if (!isOnline && (!vaultInput.value.trim() || !Number.isSafeInteger(vault) ||
-            vault < 0 || vault > 500000000 || vault % 5 !== 0)) {
+            vault < 0 || vault > 500000000)) {
             document.getElementById(statusId).textContent =
-                '預かりチップは0以上500,000,000以下、5チップ単位で入力してください。';
+                '預かりチップは0以上500,000,000以下の整数で入力してください。';
             return;
         }
         if (blackjackOnlineRoom) {
