@@ -1668,8 +1668,6 @@
     let blackjackAdminModeEnabled = false;
     let blackjackWinsFixed = localStorage.getItem('blackjack-wins-fixed') === 'true';
     let blackjackOnlineChipsFixed = localStorage.getItem('blackjack-online-chips-fixed') === 'true';
-    let blackjackChipsEarned = Number(localStorage.getItem('blackjack-chips-earned') ?? 0);
-    if (!Number.isSafeInteger(blackjackChipsEarned) || blackjackChipsEarned < 0) blackjackChipsEarned = 0;
     const blackjackAchievementDefinitions = [
         { id: 'welcome', title: 'ようこそ！', description: 'ブラックジャックに参加する', qualifies: () => true },
         { id: 'natural', title: 'N・ブラックジャック', description: '最初の2枚でAと10点のカードを引く', qualifies: () => false },
@@ -1678,9 +1676,9 @@
         { id: 'advanced', title: '上級者', description: 'ブラックジャックで100勝する', qualifies: () => blackjackWinCount >= 100 },
         { id: 'expert', title: '熟練者', description: 'ブラックジャックで500勝する', qualifies: () => blackjackWinCount >= 500 },
         { id: 'dealer', title: 'ディーラー？', description: 'ブラックジャックで1,000勝する', qualifies: () => blackjackWinCount >= 1000 },
-        { id: 'small-fortune', title: '小金持ち', description: '勝利でチップを累計500枚獲得する', qualifies: () => blackjackChipsEarned >= 500 },
-        { id: 'big-fortune', title: '大金持ち', description: '勝利でチップを累計1,000枚獲得する', qualifies: () => blackjackChipsEarned >= 1000 },
-        { id: 'bank-robber', title: '銀行襲った？', description: '勝利でチップを累計404,404,404枚獲得する', qualifies: () => blackjackChipsEarned >= 404404404 }
+        { id: 'small-fortune', title: '小金持ち', description: '預かり所に500チップ預ける', qualifies: () => blackjackVaultBalance >= 500 },
+        { id: 'big-fortune', title: '大金持ち', description: '預かり所に1,000チップ預ける', qualifies: () => blackjackVaultBalance >= 1000 },
+        { id: 'bank-robber', title: '銀行襲った？', description: '預かり所に404,404,404チップ預ける', qualifies: () => blackjackVaultBalance >= 404404404 }
     ];
     let unlockedBlackjackAchievements = new Set(
         JSON.parse(localStorage.getItem('blackjack-achievements-v1') || '[]')
@@ -3725,13 +3723,6 @@
         });
     }
 
-    function addBlackjackChipsEarned(amount) {
-        if (!Number.isSafeInteger(amount) || amount <= 0) return;
-        blackjackChipsEarned += amount;
-        localStorage.setItem('blackjack-chips-earned', String(blackjackChipsEarned));
-        unlockQualifiedBlackjackAchievements();
-    }
-
     function renderBlackjackAchievements() {
         const unlockedCount = blackjackAchievementDefinitions
             .filter(achievement => unlockedBlackjackAchievements.has(achievement.id)).length;
@@ -3754,15 +3745,15 @@
                 expert: '500',
                 dealer: '1,000'
             }[achievement.id];
-            const chipTarget = {
+            const vaultTarget = {
                 'small-fortune': '500',
                 'big-fortune': '1,000',
                 'bank-robber': '404,404,404'
             }[achievement.id];
             description.textContent = winTarget
                 ? `${achievement.description}（現在: ${blackjackWinCount}/${winTarget}）`
-                : chipTarget
-                    ? `${achievement.description}（現在: ${blackjackChipsEarned.toLocaleString()}/${chipTarget}）`
+                : vaultTarget
+                    ? `${achievement.description}（現在: ${blackjackVaultBalance.toLocaleString()}/${vaultTarget}）`
                     : achievement.description;
             item.append(title, description);
             list.append(item);
@@ -3819,7 +3810,6 @@
         recorded.push(roundKey);
         localStorage.setItem('blackjack-online-recorded-wins', JSON.stringify(recorded.slice(-500)));
         addBlackjackVictory();
-        addBlackjackChipsEarned(Number(player.lastProfit) || 0);
         syncBlackjackOnlineWinCount(room);
     }
 
@@ -3933,6 +3923,7 @@
         }
         saveBlackjackBankroll();
         renderBlackjack();
+        unlockQualifiedBlackjackAchievements();
     }
 
     function dealBlackjack() {
@@ -4007,13 +3998,11 @@
         if (result === 'blackjack') {
             blackjackBankroll += blackjackBet * 2.5;
             addBlackjackVictory();
-            addBlackjackChipsEarned(blackjackBet * 1.5);
             playSound('win');
             message += ' 賭け額の3:2で配当しました。';
         } else if (result === 'win') {
             blackjackBankroll += blackjackBet * 2;
             addBlackjackVictory();
-            addBlackjackChipsEarned(blackjackBet);
             playSound('win');
         } else if (result === 'push') {
             blackjackBankroll += blackjackBet;
