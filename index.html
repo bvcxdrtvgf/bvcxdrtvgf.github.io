@@ -35,7 +35,24 @@
         body.poker-mode .help-button {
             display: none;
         }
+        body.blackjack-mode header,
+        body.blackjack-mode #admin-panel,
+        body.blackjack-mode #shop,
+        body.blackjack-mode #game-container,
+        body.blackjack-mode .online-match,
+        body.blackjack-mode .help-button {
+            display: none;
+        }
         body.poker-mode .youtube-player {
+            position: fixed;
+            right: 12px;
+            bottom: 12px;
+            left: auto;
+            z-index: 3;
+            width: min(160px, calc(100vw - 24px));
+            height: 120px;
+        }
+        body.blackjack-mode .youtube-player {
             position: fixed;
             right: 12px;
             bottom: 12px;
@@ -356,6 +373,166 @@
         .poker-screen[hidden] {
             display: none;
         }
+        .blackjack-screen {
+            position: relative;
+            z-index: 1;
+            max-width: 760px;
+            margin: 24px auto;
+            padding: 20px;
+            border: 2px solid rgba(255,255,255,0.7);
+            border-radius: 8px;
+            background: rgba(0,0,0,0.12);
+            text-align: center;
+        }
+        .blackjack-screen[hidden] {
+            display: none;
+        }
+        .blackjack-screen h1,
+        .blackjack-screen h2 {
+            margin: 0 0 16px;
+        }
+        .blackjack-online-panel {
+            margin: 18px 0;
+            padding: 16px;
+            border: 1px solid rgba(255,255,255,0.5);
+            border-radius: 10px;
+            background: rgba(0,0,0,0.16);
+        }
+        .blackjack-online-controls,
+        .blackjack-online-actions {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin: 12px 0;
+        }
+        .blackjack-online-controls[hidden],
+        .blackjack-online-game[hidden] {
+            display: none;
+        }
+        .blackjack-online-room-list,
+        .blackjack-online-player-list {
+            display: grid;
+            gap: 8px;
+            margin: 12px auto;
+            padding: 0;
+            list-style: none;
+        }
+        .blackjack-online-room-list {
+            max-width: 520px;
+        }
+        .blackjack-online-room-list button {
+            width: 100%;
+        }
+        .blackjack-online-room-list button span {
+            display: block;
+            margin-top: 4px;
+            font-size: 13px;
+        }
+        .blackjack-online-player-list {
+            grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+        }
+        .blackjack-online-player {
+            padding: 10px;
+            border: 1px solid rgba(255,255,255,0.35);
+            border-radius: 8px;
+            background: rgba(0,0,0,0.12);
+        }
+        .blackjack-online-player .blackjack-cards {
+            min-height: 0;
+            margin-top: 8px;
+        }
+        .blackjack-online-player .card {
+            position: relative;
+            flex: 0 0 64px;
+            width: 64px;
+            height: 94px;
+            padding: 5px;
+            font-size: 14px;
+        }
+        .blackjack-online-player .card .suit-large {
+            width: 34px;
+            height: 52px;
+        }
+        .blackjack-online-player .card .suit-symbol {
+            font-size: 26px;
+        }
+        .blackjack-online-status {
+            min-height: 24px;
+            font-weight: bold;
+        }
+        .blackjack-info,
+        .blackjack-actions {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin: 14px 0;
+        }
+        .blackjack-hand {
+            min-height: 150px;
+            margin: 16px 0;
+            padding: 14px;
+            border: 1px solid rgba(255,255,255,0.45);
+            border-radius: 10px;
+            background: rgba(0,0,0,0.12);
+        }
+        .blackjack-cards {
+            display: flex;
+            justify-content: center;
+            gap: 8px;
+            flex-wrap: wrap;
+            min-height: 130px;
+        }
+        .blackjack-cards .card {
+            position: relative;
+            flex: 0 0 90px;
+        }
+        .blackjack-total {
+            min-height: 24px;
+            margin: 8px 0 0;
+        }
+        .blackjack-status {
+            min-height: 28px;
+            margin: 14px 0;
+            font-weight: bold;
+        }
+        .blackjack-help-button {
+            position: fixed;
+            top: 12px;
+            left: 12px;
+            z-index: 5;
+            width: 30px;
+            height: 30px;
+            padding: 0;
+            border: 1px solid rgba(255,255,255,0.9);
+            border-radius: 50%;
+            font-family: Georgia, serif;
+            font-size: 17px;
+            font-style: italic;
+            line-height: 1;
+        }
+        .blackjack-help-dialog {
+            width: min(560px, calc(100% - 48px));
+            max-height: calc(100% - 48px);
+            padding: 20px;
+            border: 2px solid #f1e5c7;
+            border-radius: 8px;
+            background: #fffdf5;
+            color: #20251d;
+            box-shadow: 0 8px 28px rgba(0,0,0,0.35);
+        }
+        .blackjack-help-dialog::backdrop {
+            background: rgba(0,0,0,0.55);
+        }
+        .blackjack-help-dialog h2 {
+            color: #1b5e20;
+        }
+        .blackjack-help-dialog li + li {
+            margin-top: 6px;
+        }
         header {
             text-align: center;
             margin-bottom: 20px;
@@ -598,6 +775,30 @@
             align-items: center;
             gap: 8px;
             flex-wrap: wrap;
+        }
+        .online-match-players {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin: 12px 0 0;
+            padding: 0;
+            list-style: none;
+        }
+        .online-match-player {
+            min-width: 180px;
+            padding: 8px 12px;
+            border: 1px solid rgba(255,255,255,0.55);
+            border-radius: 8px;
+            background: rgba(0,0,0,0.12);
+        }
+        .online-match-player strong,
+        .online-match-player span {
+            display: block;
+        }
+        .online-match-player span {
+            margin-top: 4px;
+            font-size: 13px;
         }
         .online-match-status {
             min-height: 20px;
@@ -844,9 +1045,9 @@
                 ポーカー
                 <span>テキサスホールデム・CPU戦 / オンライン対戦</span>
             </button>
-            <button class="game-option" type="button" disabled>
+            <button class="game-option" type="button" onclick="startBlackjack()">
                 ブラックジャック
-                <span>近日公開</span>
+                <span>ディーラーと対戦</span>
             </button>
         </div>
     </div>
@@ -988,6 +1189,117 @@
     <button type="button" onclick="returnToStartScreen()">ゲーム選択に戻る</button>
 </main>
 
+<main id="blackjack-screen" class="blackjack-screen" aria-labelledby="blackjack-title" hidden>
+    <button class="blackjack-help-button" type="button" onclick="document.getElementById('blackjack-help-dialog').showModal()" aria-label="ブラックジャックのルール" title="ルール">i</button>
+    <h1 id="blackjack-title">ブラックジャック</h1>
+    <p>21を超えないようにカードを引き、ディーラーより強い手を目指します。</p>
+    <p>ソリティアのショップでキャラカードを解放・選択すると、このゲームでもカードの絵柄に反映されます。</p>
+    <p><strong>勝利数: <span id="blackjack-win-count">0</span></strong></p>
+    <button id="blackjack-achievement-open" type="button" onclick="openBlackjackAchievements()">実績 0/10</button>
+    <button id="blackjack-online-open" type="button" onclick="openBlackjackOnline()">オンライン対戦</button>
+    <div id="blackjack-solo-area">
+    <div class="blackjack-info">
+        <label for="blackjack-cpu-difficulty">CPU難易度</label>
+        <select id="blackjack-cpu-difficulty" class="difficulty-select" onchange="setBlackjackCpuDifficulty(this.value)">
+            <option value="easy">簡単</option>
+            <option value="normal">普通</option>
+            <option value="hard">難しい</option>
+            <option value="nightmare">ナイトメア</option>
+        </select>
+        <strong>所持チップ: <span id="blackjack-bankroll">1000</span></strong>
+        <label for="blackjack-bet">賭け額</label>
+        <input id="blackjack-bet" class="bet-input" type="number" min="10" step="10" value="10">
+        <button id="blackjack-deal-button" type="button" onclick="dealBlackjack()">配る</button>
+    </div>
+    <section class="blackjack-hand" aria-labelledby="blackjack-bank-title">
+        <h2 id="blackjack-bank-title">チップ預かり所（ソロ専用）</h2>
+        <p>預けたチップは勝負に使われません。使う時は所持チップへ引き出してください。</p>
+        <p><strong>預かりチップ: <span id="blackjack-vault-balance">0</span></strong></p>
+        <div class="blackjack-info">
+            <label for="blackjack-vault-transfer">預ける／引き出す枚数</label>
+            <input id="blackjack-vault-transfer" class="bet-input" type="number" min="5" step="5" value="10">
+            <button id="blackjack-vault-deposit" type="button" onclick="transferBlackjackVault('deposit')">預ける</button>
+            <button id="blackjack-vault-withdraw" type="button" onclick="transferBlackjackVault('withdraw')">引き出す</button>
+        </div>
+    </section>
+    <section class="blackjack-hand" aria-labelledby="blackjack-dealer-title">
+        <h2 id="blackjack-dealer-title">ディーラー</h2>
+        <div id="blackjack-dealer-cards" class="blackjack-cards" aria-label="ディーラーのカード"></div>
+        <p id="blackjack-dealer-total" class="blackjack-total"></p>
+    </section>
+    <section class="blackjack-hand" aria-labelledby="blackjack-player-title">
+        <h2 id="blackjack-player-title">あなた</h2>
+        <div id="blackjack-player-cards" class="blackjack-cards" aria-label="あなたのカード"></div>
+        <p id="blackjack-player-total" class="blackjack-total"></p>
+    </section>
+    <p id="blackjack-status" class="blackjack-status" aria-live="polite">賭け額を選んで「配る」を押してください。</p>
+    <div class="blackjack-actions">
+        <button id="blackjack-hit-button" type="button" onclick="hitBlackjack()" disabled>ヒット</button>
+        <button id="blackjack-stand-button" type="button" onclick="standBlackjack()" disabled>スタンド</button>
+    </div>
+    </div>
+    <section id="blackjack-online-panel" class="blackjack-online-panel" aria-label="ブラックジャックオンライン対戦" hidden>
+        <h2>オンライン対戦</h2>
+        <p>1〜9人で対戦します。各自が同時に操作し、ディーラーは部屋のホストが担当するCPUです。所持チップが10未満になると脱落します。</p>
+        <div id="blackjack-online-lobby-controls" class="blackjack-online-controls">
+            <label for="blackjack-online-name">名前</label>
+            <input id="blackjack-online-name" class="bet-input" type="text" maxlength="16" autocomplete="nickname" placeholder="プレイヤー名">
+            <button id="blackjack-online-create" type="button" onclick="createBlackjackRoom()">部屋を作る</button>
+        </div>
+        <section id="blackjack-online-room-browser" aria-labelledby="blackjack-online-room-title">
+            <h3 id="blackjack-online-room-title">参加できる部屋</h3>
+            <ul id="blackjack-online-room-list" class="blackjack-online-room-list" aria-live="polite">
+                <li>部屋一覧を読み込み中...</li>
+            </ul>
+            <button id="blackjack-online-refresh" type="button" onclick="refreshBlackjackRoomDirectory()">一覧を更新</button>
+        </section>
+        <div id="blackjack-online-room-controls" class="blackjack-online-controls" hidden>
+            <button id="blackjack-online-start" type="button" onclick="startBlackjackTournament()" hidden>トーナメント開始</button>
+            <button id="blackjack-online-next" type="button" onclick="startBlackjackNextRound()" hidden>次のラウンド</button>
+            <button id="blackjack-online-leave" type="button" onclick="leaveBlackjackRoom()">部屋を退出</button>
+        </div>
+        <p id="blackjack-online-status" class="blackjack-online-status" aria-live="polite">部屋を作成するか、参加できる部屋を選んでください。</p>
+        <section id="blackjack-online-game" hidden>
+            <div class="blackjack-online-controls">
+                <label for="blackjack-online-bet">賭け額</label>
+                <input id="blackjack-online-bet" class="bet-input" type="number" min="10" step="10" value="10">
+                <button id="blackjack-online-bet-button" type="button" onclick="placeBlackjackOnlineBet()">賭けて参加</button>
+            </div>
+            <section class="blackjack-hand" aria-labelledby="blackjack-online-dealer-title">
+                <h3 id="blackjack-online-dealer-title">CPUディーラー</h3>
+                <div id="blackjack-online-dealer-cards" class="blackjack-cards" aria-label="CPUディーラーのカード"></div>
+                <p id="blackjack-online-dealer-total" class="blackjack-total"></p>
+            </section>
+            <ul id="blackjack-online-players" class="blackjack-online-player-list" aria-label="参加者と順位"></ul>
+            <div class="blackjack-online-actions">
+                <button id="blackjack-online-hit" type="button" onclick="actBlackjackOnline('hit')" disabled>ヒット</button>
+                <button id="blackjack-online-stand" type="button" onclick="actBlackjackOnline('stand')" disabled>スタンド</button>
+            </div>
+        </section>
+        <button id="blackjack-online-solo" type="button" onclick="closeBlackjackOnline()">ソロ対戦に戻る</button>
+    </section>
+    <button class="shop-toggle-button" type="button" onclick="openMusicMenu()">音楽</button>
+    <button type="button" onclick="returnToStartScreen()">ゲーム選択に戻る</button>
+    <dialog id="blackjack-help-dialog" class="blackjack-help-dialog" aria-labelledby="blackjack-help-title">
+        <h2 id="blackjack-help-title">ブラックジャックのルール</h2>
+        <ul>
+            <li>カードの合計を21に近づけ、21を超えないようにします。2〜10は数字どおり、J・Q・Kは10、Aは1または11として数えます。</li>
+            <li>最初にプレイヤーとディーラーへ2枚ずつ配ります。ディーラーのカードは1枚だけ表向きです。</li>
+            <li>「ヒット」でカードを1枚引き、「スタンド」で手札を確定します。プレイヤーがスタンドすると、ディーラーは合計17以上になるまでカードを引きます。CPU難易度が高いほど、ディーラーが10点札やAを引きやすくなります。</li>
+            <li>21を超えるとバーストして負けです。バーストしなければ合計を比べ、高い方が勝ち、同点は引き分けです。</li>
+            <li>最初の2枚でAと10点のカードがそろうブラックジャックは、ディーラーと引き分けでなければ賭け額の1.5倍の利益を得ます。通常の勝利は賭け額と同額の利益です。</li>
+        </ul>
+        <p>オンライン対戦は1〜9人で、各プレイヤーが同時にヒット／スタンドします。全員の手が確定した後、部屋のホストがCPUディーラーを進行します。所持チップが10未満になると脱落し、脱落順で順位が決まります。最終ラウンドまで残ったプレイヤーが優勝です。</p>
+        <p>このゲームはチップを使ったカジュアルなゲームです。ダブルダウン、スプリット、保険はありません。</p>
+        <form method="dialog"><button type="submit">閉じる</button></form>
+    </dialog>
+    <dialog id="blackjack-achievement-dialog" class="achievement-dialog" aria-labelledby="blackjack-achievement-title">
+        <h2 id="blackjack-achievement-title">ブラックジャック実績</h2>
+        <ul id="blackjack-achievement-list" class="achievement-list"></ul>
+        <form method="dialog"><button type="submit">閉じる</button></form>
+    </dialog>
+</main>
+
 <button class="help-button" type="button" onclick="document.getElementById('help-dialog').showModal()" aria-label="ソリティアの操作説明" title="操作説明">i</button>
 <dialog id="help-dialog" class="help-dialog" aria-labelledby="help-title">
     <h2 id="help-title">ソリティアの遊び方</h2>
@@ -1120,6 +1432,7 @@
         <button id="online-join-button" type="button" onclick="joinOnlineMatch()">部屋に参加</button>
         <button id="online-leave-button" type="button" onclick="leaveOnlineMatch()" hidden>対戦を終了</button>
     </div>
+    <ul id="online-match-players" class="online-match-players" aria-label="オンライン対戦プレイヤー" hidden></ul>
     <p id="online-match-status" class="online-match-status" aria-live="polite"></p>
 </section>
 
@@ -1315,6 +1628,46 @@
     let pokerRoomDirectoryRef = null;
     let pokerRoomDirectoryListener = null;
     let onlineRequestPending = false;
+    let blackjackBankroll = Number(localStorage.getItem('blackjack-bankroll') ?? 1000);
+    if (!Number.isSafeInteger(blackjackBankroll) || blackjackBankroll < 0
+        || blackjackBankroll % 5 !== 0) blackjackBankroll = 1000;
+    let blackjackVaultBalance = Number(localStorage.getItem('blackjack-vault-balance') ?? 0);
+    if (!Number.isSafeInteger(blackjackVaultBalance) || blackjackVaultBalance < 0
+        || blackjackVaultBalance % 5 !== 0) blackjackVaultBalance = 0;
+    let blackjackWinCount = Number(localStorage.getItem('blackjack-win-count') ?? 0);
+    if (!Number.isSafeInteger(blackjackWinCount) || blackjackWinCount < 0) blackjackWinCount = 0;
+    let blackjackChipsEarned = Number(localStorage.getItem('blackjack-chips-earned') ?? 0);
+    if (!Number.isSafeInteger(blackjackChipsEarned) || blackjackChipsEarned < 0) blackjackChipsEarned = 0;
+    const blackjackAchievementDefinitions = [
+        { id: 'welcome', title: 'ようこそ！', description: 'ブラックジャックに参加する', qualifies: () => true },
+        { id: 'natural', title: 'N・ブラックジャック', description: '最初の2枚でAと10点のカードを引く', qualifies: () => false },
+        { id: 'beginner', title: 'ビギナー', description: 'ブラックジャックで10勝する', qualifies: () => blackjackWinCount >= 10 },
+        { id: 'intermediate', title: '中級者', description: 'ブラックジャックで50勝する', qualifies: () => blackjackWinCount >= 50 },
+        { id: 'advanced', title: '上級者', description: 'ブラックジャックで100勝する', qualifies: () => blackjackWinCount >= 100 },
+        { id: 'expert', title: '熟練者', description: 'ブラックジャックで500勝する', qualifies: () => blackjackWinCount >= 500 },
+        { id: 'dealer', title: 'ディーラー？', description: 'ブラックジャックで1,000勝する', qualifies: () => blackjackWinCount >= 1000 },
+        { id: 'small-fortune', title: '小金持ち', description: '勝利でチップを累計500枚獲得する', qualifies: () => blackjackChipsEarned >= 500 },
+        { id: 'big-fortune', title: '大金持ち', description: '勝利でチップを累計1,000枚獲得する', qualifies: () => blackjackChipsEarned >= 1000 },
+        { id: 'bank-robber', title: '銀行襲った？', description: '勝利でチップを累計10,000枚獲得する', qualifies: () => blackjackChipsEarned >= 10000 }
+    ];
+    let unlockedBlackjackAchievements = new Set(
+        JSON.parse(localStorage.getItem('blackjack-achievements-v1') || '[]')
+    );
+    let blackjackShoe = [];
+    let blackjackPlayerHand = [];
+    let blackjackDealerHand = [];
+    let blackjackBet = 0;
+    let blackjackPhase = 'betting';
+    let blackjackCpuDifficulty = localStorage.getItem('blackjack-cpu-difficulty') || 'easy';
+    if (!['easy', 'normal', 'hard', 'nightmare'].includes(blackjackCpuDifficulty)) {
+        blackjackCpuDifficulty = 'easy';
+    }
+    let blackjackOnlineRoom = null;
+    let blackjackOnlineDirectoryRef = null;
+    let blackjackOnlineDirectoryListener = null;
+    let blackjackOnlineProcessing = false;
+    let blackjackOnlineRerun = false;
+    let blackjackOnlineRequestPending = false;
     let gameStarted = false;
     const onlineFirebaseConfig = {
         apiKey: 'AIzaSyAa4qtg2gpxOFeag0bak2In0jHuyWYOOk0',
@@ -2325,6 +2678,7 @@
         match.listener = snapshot => {
             if (!onlineMatch || onlineMatch !== match) return;
             if (!snapshot.exists()) {
+                document.getElementById('online-match-players').hidden = true;
                 clearInterval(timerInterval);
                 timerInterval = null;
                 document.getElementById('pause-button').disabled = true;
@@ -2333,6 +2687,7 @@
                 return;
             }
             const room = snapshot.val();
+            renderOnlineMatchPlayers(room);
             if (room.status === 'waiting') {
                 document.getElementById('online-match-status').textContent =
                     `部屋コード ${match.roomCode} を対戦相手に共有してください。参加を待っています。`;
@@ -2372,6 +2727,26 @@
         match.roomRef.on('value', match.listener, error => {
             document.getElementById('online-match-status').textContent = `部屋の同期に失敗しました: ${error.message}`;
         });
+    }
+
+    function renderOnlineMatchPlayers(room) {
+        const players = document.getElementById('online-match-players');
+        players.replaceChildren();
+        ['host', 'guest'].forEach(role => {
+            const player = room[role];
+            if (!player || !player.name) return;
+            const item = document.createElement('li');
+            item.className = 'online-match-player';
+            const name = document.createElement('strong');
+            name.textContent = player.name;
+            const record = document.createElement('span');
+            const victories = Number.isFinite(Number(player.victoryCount)) ? Number(player.victoryCount) : 0;
+            const clears = Number.isFinite(Number(player.totalWins)) ? Number(player.totalWins) : 0;
+            record.textContent = `勝利数: ${victories} / クリア数: ${clears}`;
+            item.append(name, record);
+            players.append(item);
+        });
+        players.hidden = players.childElementCount === 0;
     }
 
     function startOnlineMatchGame(match, room) {
@@ -2422,7 +2797,7 @@
                         status: 'waiting',
                         seed: crypto.getRandomValues(new Uint32Array(1))[0],
                         difficulty: document.getElementById('difficulty').value,
-                        host: { uid: user.uid, name },
+                        host: { uid: user.uid, name, victoryCount, totalWins },
                         guest: null,
                         winner: null,
                         createdAt: Date.now()
@@ -2482,7 +2857,7 @@
             const roomRef = onlineFirebaseDatabase.ref(`solitaireOnlineRooms/${roomCode}`);
             const result = await roomRef.transaction(room => {
                 if (!room || room.status !== 'waiting' || room.guest || room.host.uid === user.uid) return;
-                room.guest = { uid: user.uid, name };
+                room.guest = { uid: user.uid, name, victoryCount, totalWins };
                 room.status = 'playing';
                 return room;
             });
@@ -2522,6 +2897,11 @@
                     elapsedSeconds,
                     finishedAt: Date.now()
                 };
+                const player = room[match.role];
+                if (player && player.uid === match.uid) {
+                    player.victoryCount = Number(victoryCount) || 0;
+                    player.totalWins = Number(totalWins) || 0;
+                }
                 return room;
             });
             if (!result.committed) {
@@ -3047,6 +3427,11 @@
             saveAchievements();
             updateStats();
             if (onlineMatch && onlineMatch.started) {
+                if (!adminCountersFixed) {
+                    victoryCount++;
+                    localStorage.setItem('solitaire-victory-count', victoryCount);
+                    updateStats();
+                }
                 reportOnlineMatchWin(onlineMatch);
                 saveCurrentGame();
                 return;
@@ -3122,11 +3507,1154 @@
         });
     }
 
+    function startBlackjack() {
+        if (gameStarted) return;
+        gameStarted = true;
+        localPokerRoom = null;
+        document.getElementById('start-screen').hidden = true;
+        document.getElementById('poker-screen').hidden = true;
+        document.getElementById('blackjack-screen').hidden = false;
+        document.body.classList.remove('poker-mode');
+        document.body.classList.add('blackjack-mode');
+        setGameContentInert(false);
+        document.getElementById('blackjack-solo-area').hidden = false;
+        document.getElementById('blackjack-online-open').hidden = false;
+        document.getElementById('blackjack-online-panel').hidden = true;
+        document.getElementById('blackjack-bankroll').textContent = blackjackBankroll;
+        unlockBlackjackAchievement('welcome');
+        unlockQualifiedBlackjackAchievements();
+        renderBlackjackAchievements();
+        renderBlackjack();
+    }
+
+    function createBlackjackShoe() {
+        const cards = [];
+        for (let deckIndex = 0; deckIndex < 6; deckIndex++) {
+            suits.forEach(suit => ranks.forEach((rankStr, rank) =>
+                cards.push({ suit, rank, rankStr, faceUp: true })));
+        }
+        shuffleDeck(cards);
+        return cards;
+    }
+
+    function blackjackHandValue(hand) {
+        let total = 0;
+        let aces = 0;
+        hand.forEach(card => {
+            if (card.rank === 0) {
+                total += 11;
+                aces++;
+            } else {
+                total += card.rank >= 9 ? 10 : card.rank + 1;
+            }
+        });
+        while (total > 21 && aces > 0) {
+            total -= 10;
+            aces--;
+        }
+        return total;
+    }
+
+    function blackjackHasNatural(hand) {
+        return hand.length === 2 && blackjackHandValue(hand) === 21;
+    }
+
+    function drawBlackjackCard() {
+        if (blackjackShoe.length < 20) blackjackShoe = createBlackjackShoe();
+        return blackjackShoe.pop();
+    }
+
+    function setBlackjackCpuDifficulty(difficulty) {
+        if (!['easy', 'normal', 'hard', 'nightmare'].includes(difficulty)) return;
+        blackjackCpuDifficulty = difficulty;
+        localStorage.setItem('blackjack-cpu-difficulty', difficulty);
+    }
+
+    function addBlackjackVictory() {
+        blackjackWinCount++;
+        localStorage.setItem('blackjack-win-count', String(blackjackWinCount));
+        document.getElementById('blackjack-win-count').textContent = blackjackWinCount;
+        unlockQualifiedBlackjackAchievements();
+    }
+
+    function unlockBlackjackAchievement(id) {
+        if (unlockedBlackjackAchievements.has(id)) return;
+        unlockedBlackjackAchievements.add(id);
+        localStorage.setItem('blackjack-achievements-v1', JSON.stringify([...unlockedBlackjackAchievements]));
+        renderBlackjackAchievements();
+    }
+
+    function unlockQualifiedBlackjackAchievements() {
+        blackjackAchievementDefinitions.forEach(achievement => {
+            if (achievement.qualifies()) unlockBlackjackAchievement(achievement.id);
+        });
+    }
+
+    function addBlackjackChipsEarned(amount) {
+        if (!Number.isSafeInteger(amount) || amount <= 0) return;
+        blackjackChipsEarned += amount;
+        localStorage.setItem('blackjack-chips-earned', String(blackjackChipsEarned));
+        unlockQualifiedBlackjackAchievements();
+    }
+
+    function renderBlackjackAchievements() {
+        const unlockedCount = blackjackAchievementDefinitions
+            .filter(achievement => unlockedBlackjackAchievements.has(achievement.id)).length;
+        const button = document.getElementById('blackjack-achievement-open');
+        if (button) button.textContent = `実績 ${unlockedCount}/${blackjackAchievementDefinitions.length}`;
+        const list = document.getElementById('blackjack-achievement-list');
+        if (!list) return;
+        list.replaceChildren();
+        blackjackAchievementDefinitions.forEach(achievement => {
+            const unlocked = unlockedBlackjackAchievements.has(achievement.id);
+            const item = document.createElement('li');
+            item.className = `achievement-item${unlocked ? ' unlocked' : ''}`;
+            const title = document.createElement('strong');
+            title.textContent = `${unlocked ? '獲得済み' : '未獲得'}: ${achievement.title}`;
+            const description = document.createElement('span');
+            const winTarget = {
+                beginner: '10',
+                intermediate: '50',
+                advanced: '100',
+                expert: '500',
+                dealer: '1,000'
+            }[achievement.id];
+            const chipTarget = {
+                'small-fortune': '500',
+                'big-fortune': '1,000',
+                'bank-robber': '10,000'
+            }[achievement.id];
+            description.textContent = winTarget
+                ? `${achievement.description}（現在: ${blackjackWinCount}/${winTarget}）`
+                : chipTarget
+                    ? `${achievement.description}（現在: ${blackjackChipsEarned.toLocaleString()}/${chipTarget}）`
+                    : achievement.description;
+            item.append(title, description);
+            list.append(item);
+        });
+    }
+
+    function openBlackjackAchievements() {
+        renderBlackjackAchievements();
+        document.getElementById('blackjack-achievement-dialog').showModal();
+    }
+
+    function syncBlackjackOnlineWinCount(room) {
+        if (room.public?.players?.[room.uid]?.wins === blackjackWinCount) return;
+        const winsRef = room.publicRef.child(`players/${room.uid}/wins`);
+        winsRef.set(blackjackWinCount).catch(error => {
+            console.error('ブラックジャックの勝利数をオンライン部屋に同期できませんでした。', error);
+            if (blackjackOnlineRoom === room) {
+                setBlackjackOnlineStatus(pokerFirebaseErrorMessage(error, '勝利数の同期'));
+            }
+        });
+    }
+
+    function recordBlackjackOnlineVictory(room) {
+        const data = room.public;
+        const player = data?.players?.[room.uid];
+        if (!player?.result?.includes('勝利') || !['result', 'finished'].includes(data?.game?.phase)) return;
+        const roundKey = `${room.id}:${data.game.round}`;
+        const recorded = JSON.parse(localStorage.getItem('blackjack-online-recorded-wins') || '[]');
+        if (recorded.includes(roundKey)) return;
+        recorded.push(roundKey);
+        localStorage.setItem('blackjack-online-recorded-wins', JSON.stringify(recorded.slice(-500)));
+        addBlackjackVictory();
+        addBlackjackChipsEarned(Number(player.lastProfit) || 0);
+        syncBlackjackOnlineWinCount(room);
+    }
+
+    function drawBlackjackDealerCard() {
+        if (blackjackShoe.length < 20) blackjackShoe = createBlackjackShoe();
+        const favorableCardWeight = {
+            easy: 1,
+            normal: 2,
+            hard: 4,
+            nightmare: 10
+        }[blackjackCpuDifficulty];
+        const totalWeight = blackjackShoe.reduce((sum, card) =>
+            sum + (card.rank === 0 || card.rank >= 9 ? favorableCardWeight : 1), 0);
+        let selection = Math.random() * totalWeight;
+        for (let index = 0; index < blackjackShoe.length; index++) {
+            const card = blackjackShoe[index];
+            selection -= card.rank === 0 || card.rank >= 9 ? favorableCardWeight : 1;
+            if (selection < 0) return blackjackShoe.splice(index, 1)[0];
+        }
+        return blackjackShoe.pop();
+    }
+
+    function saveBlackjackBankroll() {
+        localStorage.setItem('blackjack-bankroll', String(blackjackBankroll));
+        localStorage.setItem('blackjack-vault-balance', String(blackjackVaultBalance));
+        document.getElementById('blackjack-bankroll').textContent = blackjackBankroll;
+        document.getElementById('blackjack-vault-balance').textContent = blackjackVaultBalance;
+    }
+
+    function renderBlackjack() {
+        const dealerCards = document.getElementById('blackjack-dealer-cards');
+        const playerCards = document.getElementById('blackjack-player-cards');
+        dealerCards.replaceChildren();
+        playerCards.replaceChildren();
+        blackjackDealerHand.forEach((card, index) => {
+            const hidden = blackjackPhase === 'playing' && index === 1;
+            dealerCards.append(createCardDOM({ ...card, faceUp: !hidden }));
+        });
+        blackjackPlayerHand.forEach(card => playerCards.append(createCardDOM(card)));
+
+        const visibleDealerHand = blackjackPhase === 'playing'
+            ? blackjackDealerHand.slice(0, 1)
+            : blackjackDealerHand;
+        document.getElementById('blackjack-dealer-total').textContent = blackjackDealerHand.length
+            ? `合計: ${blackjackPhase === 'playing' ? blackjackHandValue(visibleDealerHand) + ' + ?' : blackjackHandValue(blackjackDealerHand)}`
+            : '';
+        document.getElementById('blackjack-player-total').textContent = blackjackPlayerHand.length
+            ? `合計: ${blackjackHandValue(blackjackPlayerHand)}`
+            : '';
+        document.getElementById('blackjack-bankroll').textContent = blackjackBankroll;
+        document.getElementById('blackjack-vault-balance').textContent = blackjackVaultBalance;
+        document.getElementById('blackjack-win-count').textContent = blackjackWinCount;
+        const difficultySelect = document.getElementById('blackjack-cpu-difficulty');
+        difficultySelect.value = blackjackCpuDifficulty;
+        difficultySelect.disabled = blackjackPhase === 'playing';
+        document.getElementById('blackjack-bet').disabled = blackjackPhase === 'playing';
+        document.getElementById('blackjack-deal-button').disabled =
+            blackjackPhase === 'playing' || blackjackBankroll < 10;
+        document.getElementById('blackjack-deal-button').textContent =
+            blackjackPhase === 'finished' ? '次のゲーム' : '配る';
+        document.getElementById('blackjack-hit-button').disabled = blackjackPhase !== 'playing';
+        document.getElementById('blackjack-stand-button').disabled = blackjackPhase !== 'playing';
+        document.getElementById('blackjack-vault-transfer').disabled = blackjackPhase === 'playing';
+        document.getElementById('blackjack-vault-deposit').disabled = blackjackPhase === 'playing';
+        document.getElementById('blackjack-vault-withdraw').disabled =
+            blackjackPhase === 'playing' || blackjackVaultBalance < 10;
+    }
+
+    function transferBlackjackVault(direction) {
+        if (blackjackOnlineRoom || !document.getElementById('blackjack-online-panel').hidden) {
+            return;
+        }
+        if (blackjackPhase === 'playing') {
+            document.getElementById('blackjack-status').textContent =
+                '勝負中はチップを預けたり引き出したりできません。';
+            return;
+        }
+        const amount = Number(document.getElementById('blackjack-vault-transfer').value);
+        if (!Number.isSafeInteger(amount) || amount < 5 || amount % 5 !== 0) {
+            document.getElementById('blackjack-status').textContent =
+                '枚数は5以上、5チップ単位で入力してください。';
+            return;
+        }
+        if (direction === 'deposit') {
+            if (amount > blackjackBankroll) {
+                document.getElementById('blackjack-status').textContent =
+                    '預ける枚数が所持チップを超えています。';
+                return;
+            }
+            blackjackBankroll -= amount;
+            blackjackVaultBalance += amount;
+            document.getElementById('blackjack-status').textContent =
+                `${amount}チップを預かり所に預けました。`;
+        } else if (direction === 'withdraw') {
+            if (amount > blackjackVaultBalance) {
+                document.getElementById('blackjack-status').textContent =
+                    '引き出す枚数が預かりチップを超えています。';
+                return;
+            }
+            blackjackVaultBalance -= amount;
+            blackjackBankroll += amount;
+            document.getElementById('blackjack-status').textContent =
+                `${amount}チップを所持チップへ引き出しました。`;
+        } else {
+            return;
+        }
+        saveBlackjackBankroll();
+        renderBlackjack();
+    }
+
+    function dealBlackjack() {
+        if (blackjackPhase === 'playing') return;
+        const betInput = document.getElementById('blackjack-bet');
+        const bet = Number(betInput.value);
+        if (!Number.isSafeInteger(bet) || bet < 10 || bet % 10 !== 0 || bet > blackjackBankroll) {
+            document.getElementById('blackjack-status').textContent =
+                '賭け額は10以上、10チップ単位で、所持チップ以下にしてください。';
+            return;
+        }
+        if (blackjackShoe.length < 20) blackjackShoe = createBlackjackShoe();
+        blackjackBet = bet;
+        blackjackBankroll -= bet;
+        saveBlackjackBankroll();
+        blackjackPlayerHand = [drawBlackjackCard(), drawBlackjackCard()];
+        blackjackDealerHand = [drawBlackjackDealerCard(), drawBlackjackDealerCard()];
+        blackjackPhase = 'playing';
+        playSound('draw');
+
+        const playerNatural = blackjackHasNatural(blackjackPlayerHand);
+        const dealerNatural = blackjackHasNatural(blackjackDealerHand);
+        if (playerNatural) unlockBlackjackAchievement('natural');
+        if (playerNatural || dealerNatural) {
+            blackjackDealerHand.forEach(card => { card.faceUp = true; });
+            if (playerNatural && dealerNatural) {
+                finishBlackjackRound('push', '両者ブラックジャック。引き分けです。');
+            } else if (playerNatural) {
+                finishBlackjackRound('blackjack', 'ブラックジャック！');
+            } else {
+                finishBlackjackRound('loss', 'ディーラーがブラックジャックです。');
+            }
+        } else {
+            document.getElementById('blackjack-status').textContent = 'ヒットまたはスタンドを選んでください。';
+            renderBlackjack();
+        }
+    }
+
+    function hitBlackjack() {
+        if (blackjackPhase !== 'playing') return;
+        blackjackPlayerHand.push(drawBlackjackCard());
+        playSound('draw');
+        if (blackjackHandValue(blackjackPlayerHand) > 21) {
+            finishBlackjackRound('loss', 'バースト！21を超えました。');
+        } else {
+            document.getElementById('blackjack-status').textContent = 'ヒットまたはスタンドを選んでください。';
+            renderBlackjack();
+        }
+    }
+
+    function standBlackjack() {
+        if (blackjackPhase !== 'playing') return;
+        blackjackDealerHand.forEach(card => { card.faceUp = true; });
+        while (blackjackHandValue(blackjackDealerHand) < 17) {
+            blackjackDealerHand.push(drawBlackjackDealerCard());
+        }
+        const playerTotal = blackjackHandValue(blackjackPlayerHand);
+        const dealerTotal = blackjackHandValue(blackjackDealerHand);
+        if (dealerTotal > 21 || playerTotal > dealerTotal) {
+            finishBlackjackRound('win', dealerTotal > 21
+                ? 'ディーラーがバースト！あなたの勝ちです。'
+                : 'あなたの勝ちです。');
+        } else if (playerTotal === dealerTotal) {
+            finishBlackjackRound('push', '引き分けです。賭け額が戻ります。');
+        } else {
+            finishBlackjackRound('loss', 'ディーラーの勝ちです。');
+        }
+    }
+
+    function finishBlackjackRound(result, message) {
+        blackjackPhase = 'finished';
+        if (result === 'blackjack') {
+            blackjackBankroll += blackjackBet * 2.5;
+            addBlackjackVictory();
+            addBlackjackChipsEarned(blackjackBet * 1.5);
+            playSound('win');
+            message += ' 賭け額の3:2で配当しました。';
+        } else if (result === 'win') {
+            blackjackBankroll += blackjackBet * 2;
+            addBlackjackVictory();
+            addBlackjackChipsEarned(blackjackBet);
+            playSound('win');
+        } else if (result === 'push') {
+            blackjackBankroll += blackjackBet;
+            playSound('move');
+        } else {
+            playSound('fail');
+        }
+        saveBlackjackBankroll();
+        document.getElementById('blackjack-status').textContent = message;
+        renderBlackjack();
+    }
+
+    function openBlackjackOnline() {
+        document.getElementById('blackjack-solo-area').hidden = true;
+        document.getElementById('blackjack-online-open').hidden = true;
+        document.getElementById('blackjack-online-panel').hidden = false;
+        document.getElementById('blackjack-online-name').value =
+            localStorage.getItem('blackjack-online-name') || '';
+        startBlackjackRoomDirectoryListener();
+    }
+
+    async function closeBlackjackOnline() {
+        if (blackjackOnlineRoom) {
+            await leaveBlackjackRoom();
+        }
+        stopBlackjackRoomDirectoryListener();
+        document.getElementById('blackjack-online-panel').hidden = true;
+        document.getElementById('blackjack-online-open').hidden = false;
+        document.getElementById('blackjack-solo-area').hidden = false;
+    }
+
+    function blackjackOnlineName() {
+        const input = document.getElementById('blackjack-online-name');
+        const name = input.value.trim().slice(0, 16);
+        if (!name) throw new Error('プレイヤー名を入力してください。');
+        input.value = name;
+        localStorage.setItem('blackjack-online-name', name);
+        return name;
+    }
+
+    function setBlackjackOnlineStatus(message) {
+        document.getElementById('blackjack-online-status').textContent = message;
+    }
+
+    function renderBlackjackRoomDirectory(snapshot) {
+        const list = document.getElementById('blackjack-online-room-list');
+        list.replaceChildren();
+        const rooms = [];
+        snapshot.forEach(roomSnapshot => {
+            const room = roomSnapshot.val();
+            if (room?.status === 'waiting' && Number.isInteger(room.playerCount)
+                && room.playerCount >= 1 && room.playerCount < 9) {
+                rooms.push({ id: roomSnapshot.key, ...room });
+            }
+        });
+        rooms.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+        if (!rooms.length) {
+            const empty = document.createElement('li');
+            empty.textContent = '現在、参加できる部屋はありません。';
+            list.append(empty);
+            return;
+        }
+        rooms.forEach(room => {
+            const item = document.createElement('li');
+            const button = document.createElement('button');
+            button.type = 'button';
+            button.disabled = blackjackOnlineRequestPending;
+            button.addEventListener('click', () => joinBlackjackRoom(room.id));
+            button.append(document.createTextNode(`${room.hostName || 'プレイヤー'} の部屋`));
+            const detail = document.createElement('span');
+            detail.textContent = `${room.playerCount}/9人・参加者募集中`;
+            button.append(detail);
+            item.append(button);
+            list.append(item);
+        });
+    }
+
+    async function refreshBlackjackRoomDirectory() {
+        const refreshButton = document.getElementById('blackjack-online-refresh');
+        refreshButton.disabled = true;
+        try {
+            await getOnlineFirebaseUser();
+            const snapshot = await onlineFirebaseDatabase.ref('blackjackRoomDirectory')
+                .orderByChild('status').equalTo('waiting').once('value');
+            renderBlackjackRoomDirectory(snapshot);
+        } catch (error) {
+            console.error('参加可能なブラックジャックの部屋を取得できませんでした。', error);
+            const list = document.getElementById('blackjack-online-room-list');
+            list.replaceChildren();
+            const unavailable = document.createElement('li');
+            unavailable.textContent =
+                '部屋一覧を取得できません。Firebaseのルールを最新版にしてから再読み込みしてください。';
+            list.append(unavailable);
+            setBlackjackOnlineStatus(pokerFirebaseErrorMessage(error, 'ブラックジャック部屋一覧の取得'));
+        } finally {
+            refreshButton.disabled = false;
+        }
+    }
+
+    async function startBlackjackRoomDirectoryListener() {
+        try {
+            await getOnlineFirebaseUser();
+            if (!gameStarted || !document.body.classList.contains('blackjack-mode')
+                || document.getElementById('blackjack-online-panel').hidden) return;
+            if (blackjackOnlineDirectoryListener) return;
+            blackjackOnlineDirectoryRef = onlineFirebaseDatabase.ref('blackjackRoomDirectory')
+                .orderByChild('status').equalTo('waiting');
+            blackjackOnlineDirectoryListener = snapshot => renderBlackjackRoomDirectory(snapshot);
+            blackjackOnlineDirectoryRef.on('value', blackjackOnlineDirectoryListener, error => {
+                console.error('ブラックジャックの部屋一覧を同期できませんでした。', error);
+                setBlackjackOnlineStatus(pokerFirebaseErrorMessage(error, '部屋一覧の同期'));
+            });
+        } catch (error) {
+            console.error('ブラックジャックの部屋一覧を読み込めませんでした。', error);
+            setBlackjackOnlineStatus(pokerFirebaseErrorMessage(error, '部屋一覧の取得'));
+        }
+    }
+
+    function stopBlackjackRoomDirectoryListener() {
+        if (blackjackOnlineDirectoryRef && blackjackOnlineDirectoryListener) {
+            blackjackOnlineDirectoryRef.off('value', blackjackOnlineDirectoryListener);
+        }
+        blackjackOnlineDirectoryRef = null;
+        blackjackOnlineDirectoryListener = null;
+    }
+
+    function newBlackjackOnlinePlayer(name) {
+        return {
+            name,
+            chips: 200,
+            connected: true,
+            hand: [],
+            bet: 0,
+            state: 'waiting',
+            result: '',
+            rank: null,
+            eliminated: false
+        };
+    }
+
+    async function createBlackjackRoom() {
+        if (blackjackOnlineRequestPending || blackjackOnlineRoom) return;
+        blackjackOnlineRequestPending = true;
+        document.getElementById('blackjack-online-create').disabled = true;
+        try {
+            const user = await getOnlineFirebaseUser();
+            const name = blackjackOnlineName();
+            const roomId = onlineFirebaseDatabase.ref('blackjackRooms').push().key;
+            if (!roomId) throw new Error('部屋を作成できませんでした。もう一度お試しください。');
+            const roomRef = onlineFirebaseDatabase.ref(`blackjackRooms/${roomId}`);
+            const publicRef = roomRef.child('public');
+            const directoryRef = onlineFirebaseDatabase.ref(`blackjackRoomDirectory/${roomId}`);
+            const data = {
+                status: 'waiting',
+                hostUid: user.uid,
+                hostName: name,
+                createdAt: firebase.database.ServerValue.TIMESTAMP,
+                players: { [user.uid]: newBlackjackOnlinePlayer(name) },
+                playerOrder: [user.uid],
+                eliminationOrder: [],
+                game: { phase: 'waiting', round: 0, dealerHand: [], deck: [], message: '' }
+            };
+            const result = await publicRef.transaction(current => current === null ? data : undefined,
+                undefined, false);
+            if (!result.committed) throw new Error('部屋を作成できませんでした。もう一度お試しください。');
+            try {
+                await directoryRef.set({
+                    hostUid: user.uid,
+                    hostName: name,
+                    status: 'waiting',
+                    createdAt: firebase.database.ServerValue.TIMESTAMP,
+                    playerCount: 1
+                });
+                await directoryRef.onDisconnect().remove();
+            } catch (error) {
+                try {
+                    await directoryRef.remove();
+                } catch (cleanupError) {
+                    console.error('作成途中のブラックジャック部屋一覧を削除できませんでした。', cleanupError);
+                }
+                await publicRef.remove();
+                throw error;
+            }
+            attachBlackjackRoom({
+                id: roomId, roomRef, publicRef, directoryRef, uid: user.uid, isHost: true, name
+            });
+            setBlackjackOnlineStatus('部屋を作成しました。参加者を待っています。');
+        } catch (error) {
+            console.error('ブラックジャック部屋を作成できませんでした。', error);
+            setBlackjackOnlineStatus(pokerFirebaseErrorMessage(error, 'ブラックジャック部屋作成'));
+        } finally {
+            blackjackOnlineRequestPending = false;
+            document.getElementById('blackjack-online-create').disabled = false;
+            refreshBlackjackRoomDirectory();
+        }
+    }
+
+    async function joinBlackjackRoom(roomId) {
+        if (blackjackOnlineRequestPending || blackjackOnlineRoom || !roomId) return;
+        blackjackOnlineRequestPending = true;
+        try {
+            const user = await getOnlineFirebaseUser();
+            const name = blackjackOnlineName();
+            const roomRef = onlineFirebaseDatabase.ref(`blackjackRooms/${roomId}`);
+            const publicRef = roomRef.child('public');
+            let result;
+            let abortReason = '';
+            for (let attempt = 0; attempt < 3; attempt++) {
+                const snapshot = await publicRef.once('value');
+                const previouslyRead = snapshot.val();
+                if (!previouslyRead) throw new Error('選択した部屋が見つかりません。一覧を更新してください。');
+                if (previouslyRead.status !== 'waiting' && !previouslyRead.players?.[user.uid]) {
+                    throw new Error('この部屋では参加者を募集していません。');
+                }
+                result = await publicRef.transaction(current => {
+                    const latest = current;
+                    if (!latest) return;
+                    const players = { ...(latest.players || {}) };
+                    if (players[user.uid]) {
+                        players[user.uid] = { ...players[user.uid], connected: true, name };
+                    } else {
+                        if (latest.status !== 'waiting') {
+                            abortReason = 'この部屋では参加者を募集していません。';
+                            return;
+                        }
+                        if (Object.keys(players).length >= 9) {
+                            abortReason = 'この部屋は満員です（最大9人）。';
+                            return;
+                        }
+                        players[user.uid] = newBlackjackOnlinePlayer(name);
+                    }
+                    return {
+                        ...latest,
+                        players,
+                        playerOrder: latest.playerOrder?.includes(user.uid)
+                            ? latest.playerOrder : [...(latest.playerOrder || []), user.uid]
+                    };
+                }, undefined, false);
+                if (result.committed) break;
+                if (attempt === 2) {
+                    throw new Error(abortReason || '参加を確定できませんでした。時間をおいて再度お試しください。');
+                }
+            }
+            if (!result?.committed || !result.snapshot.exists()) {
+                throw new Error(abortReason || '参加を確定できませんでした。時間をおいて再度お試しください。');
+            }
+            const directoryRef = onlineFirebaseDatabase.ref(`blackjackRoomDirectory/${roomId}`);
+            try {
+                await directoryRef.child('playerCount')
+                    .set(Object.keys(result.snapshot.val().players || {}).length);
+            } catch (error) {
+                console.error('ブラックジャック部屋一覧の参加人数を更新できませんでした。', error);
+            }
+            attachBlackjackRoom({ id: roomId, roomRef, publicRef, directoryRef, uid: user.uid, isHost: false, name });
+        } catch (error) {
+            console.error('ブラックジャック部屋に参加できませんでした。', error);
+            setBlackjackOnlineStatus(pokerFirebaseErrorMessage(error, 'ブラックジャック部屋参加'));
+        } finally {
+            blackjackOnlineRequestPending = false;
+            refreshBlackjackRoomDirectory();
+        }
+    }
+
+    function attachBlackjackRoom(room) {
+        if (blackjackOnlineRoom) detachBlackjackRoom();
+        room.presenceRef = room.publicRef.child(`players/${room.uid}`);
+        room.publicListener = snapshot => {
+            if (blackjackOnlineRoom !== room) return;
+            if (!snapshot.exists()) {
+                setBlackjackOnlineStatus('部屋が終了しました。');
+                detachBlackjackRoom();
+                return;
+            }
+            room.public = snapshot.val();
+            syncBlackjackOnlineWinCount(room);
+            recordBlackjackOnlineVictory(room);
+            renderBlackjackOnlineRoom(room);
+            if (room.public.status !== 'waiting') closeBlackjackRoomListing(room);
+            if (room.isHost) processBlackjackOnlineHostState(room);
+        };
+        room.presenceRef.onDisconnect().update({ connected: false, state: 'bust' })
+            .catch(error => console.error('退出時の接続状態を登録できませんでした。', error));
+        blackjackOnlineRoom = room;
+        document.getElementById('blackjack-online-room-browser').hidden = true;
+        document.getElementById('blackjack-online-lobby-controls').hidden = true;
+        document.getElementById('blackjack-online-room-controls').hidden = false;
+        document.getElementById('blackjack-online-game').hidden = false;
+        document.getElementById('blackjack-online-solo').hidden = true;
+        room.publicRef.on('value', room.publicListener, error => {
+            console.error('ブラックジャック部屋の同期に失敗しました。', error);
+            setBlackjackOnlineStatus(pokerFirebaseErrorMessage(error, '部屋同期'));
+        });
+    }
+
+    async function closeBlackjackRoomListing(room) {
+        if (!room.isHost || room.directoryClosed) return;
+        room.directoryClosed = true;
+        try {
+            await room.directoryRef.onDisconnect().cancel();
+            await room.directoryRef.remove();
+        } catch (error) {
+            room.directoryClosed = false;
+            console.error('ブラックジャックの募集一覧を終了できませんでした。', error);
+            setBlackjackOnlineStatus(pokerFirebaseErrorMessage(error, '募集終了'));
+        }
+    }
+
+    function detachBlackjackRoom() {
+        const room = blackjackOnlineRoom;
+        if (!room) return;
+        room.presenceRef.onDisconnect().cancel().catch(error =>
+            console.error('退出時の接続状態を解除できませんでした。', error));
+        room.publicRef.off('value', room.publicListener);
+        blackjackOnlineRoom = null;
+        blackjackOnlineProcessing = false;
+        blackjackOnlineRerun = false;
+        document.getElementById('blackjack-online-room-browser').hidden = false;
+        document.getElementById('blackjack-online-lobby-controls').hidden = false;
+        document.getElementById('blackjack-online-room-controls').hidden = true;
+        document.getElementById('blackjack-online-game').hidden = true;
+        document.getElementById('blackjack-online-solo').hidden = false;
+        refreshBlackjackRoomDirectory();
+    }
+
+    async function leaveBlackjackRoom() {
+        const room = blackjackOnlineRoom;
+        if (!room) return;
+        try {
+            await room.presenceRef.onDisconnect().cancel();
+            if (room.isHost) {
+                await room.directoryRef.onDisconnect().cancel();
+                await room.directoryRef.remove();
+                await room.publicRef.remove();
+            } else if (room.public?.status === 'waiting') {
+                const result = await room.publicRef.transaction(current => {
+                    if (!current?.players?.[room.uid]) return;
+                    const players = { ...current.players };
+                    delete players[room.uid];
+                    return {
+                        ...current,
+                        players,
+                        playerOrder: (current.playerOrder || []).filter(uid => uid !== room.uid)
+                    };
+                }, undefined, false);
+                if (result.committed) {
+                    await room.directoryRef.child('playerCount')
+                        .set(Object.keys(result.snapshot.val().players || {}).length);
+                }
+            } else if (room.public?.status === 'playing') {
+                await room.publicRef.child(`players/${room.uid}`).update({
+                    connected: false, chips: 0, state: 'bust', result: '途中退出'
+                });
+            }
+        } catch (error) {
+            console.error('ブラックジャック部屋を退出できませんでした。', error);
+            setBlackjackOnlineStatus(pokerFirebaseErrorMessage(error, 'ブラックジャック部屋退出'));
+        } finally {
+            detachBlackjackRoom();
+        }
+    }
+
+    async function startBlackjackTournament() {
+        const room = blackjackOnlineRoom;
+        if (!room?.isHost || room.public?.status !== 'waiting') return;
+        try {
+            const result = await room.publicRef.transaction(current => {
+                if (!current || current.status !== 'waiting') return;
+                const players = { ...current.players };
+                const order = (current.playerOrder || []).filter(uid =>
+                    players[uid]?.connected !== false);
+                if (order.length < 1 || order.length > 9) return;
+                Object.keys(players).forEach(uid => {
+                    if (!order.includes(uid)) delete players[uid];
+                });
+                order.forEach(uid => {
+                    if (players[uid]) players[uid] = { ...players[uid], chips: 200, hand: [], bet: 0,
+                        state: 'waiting', result: '', rank: null, eliminated: false };
+                });
+                return {
+                    ...current,
+                    status: 'playing',
+                    players,
+                    playerOrder: order,
+                    eliminationOrder: [],
+                    game: { phase: 'betting', round: 1, dealerHand: [], deck: [], message: '賭け額を選んで参加してください。' }
+                };
+            }, undefined, false);
+            if (!result.committed) throw new Error('トーナメントを開始できませんでした。部屋の状態を確認してください。');
+            room.public = result.snapshot.val();
+            renderBlackjackOnlineRoom(room);
+            closeBlackjackRoomListing(room);
+            setBlackjackOnlineStatus('トーナメント開始。各自、賭け額を決めて参加してください。');
+        } catch (error) {
+            console.error('ブラックジャックのトーナメントを開始できませんでした。', error);
+            setBlackjackOnlineStatus(pokerFirebaseErrorMessage(error, 'トーナメント開始'));
+        }
+    }
+
+    function serializeBlackjackOnlineCard(card) {
+        return { suit: card.suit.name, rank: card.rank };
+    }
+
+    function deserializeBlackjackOnlineCard(card) {
+        const suit = suits.find(candidate => candidate.name === card?.suit);
+        const rank = Number(card?.rank);
+        if (!suit || !Number.isInteger(rank) || rank < 0 || rank >= ranks.length) return null;
+        return { suit, rank, rankStr: ranks[rank], faceUp: true };
+    }
+
+    function makeBlackjackOnlineShoe() {
+        const cards = [];
+        for (let deckIndex = 0; deckIndex < 6; deckIndex++) {
+            suits.forEach(suit => ranks.forEach((rankStr, rank) =>
+                cards.push({ suit: suit.name, rank })));
+        }
+        shuffleDeck(cards);
+        return cards;
+    }
+
+    function blackjackOnlineActivePlayers(data) {
+        return (data.playerOrder || []).filter(uid => {
+            const player = data.players?.[uid];
+            return player && !player.eliminated && player.connected !== false && player.chips >= 10;
+        });
+    }
+
+    function blackjackOnlineRoundPlayers(data) {
+        return (data.playerOrder || []).filter(uid => {
+            const player = data.players?.[uid];
+            return player && !player.eliminated && player.connected !== false && player.bet > 0;
+        });
+    }
+
+    async function placeBlackjackOnlineBet() {
+        const room = blackjackOnlineRoom;
+        const bet = Number(document.getElementById('blackjack-online-bet').value);
+        if (!Number.isSafeInteger(bet) || bet < 10 || bet % 10 !== 0) {
+            setBlackjackOnlineStatus('賭け額は10以上、10チップ単位で入力してください。');
+            return;
+        }
+        try {
+            const result = await room.publicRef.transaction(current => {
+                const player = current?.players?.[room.uid];
+                if (current?.status !== 'playing' || current.game?.phase !== 'betting'
+                    || !player || player.eliminated || player.state !== 'waiting'
+                    || bet > player.chips) return;
+                const players = { ...current.players,
+                    [room.uid]: { ...player, bet, state: 'ready', hand: [], result: '' } };
+                return { ...current, players };
+            }, undefined, false);
+            if (!result.committed) throw new Error('賭けを確定できません。所持チップやラウンド状態を確認してください。');
+            room.public = result.snapshot.val();
+            renderBlackjackOnlineRoom(room);
+            setBlackjackOnlineStatus('賭けを確定しました。全員の準備ができると配札されます。');
+        } catch (error) {
+            console.error('ブラックジャックの賭けを確定できませんでした。', error);
+            setBlackjackOnlineStatus(error.message || '賭けを確定できませんでした。');
+        }
+    }
+
+    async function actBlackjackOnline(action) {
+        const room = blackjackOnlineRoom;
+        if (!room || !['hit', 'stand'].includes(action)) return;
+        try {
+            const result = await room.publicRef.transaction(current => {
+                const player = current?.players?.[room.uid];
+                if (current?.status !== 'playing' || current.game?.phase !== 'playing'
+                    || !player || player.state !== 'playing') return;
+                const players = { ...current.players };
+                let hand = [...(player.hand || [])];
+                let state = action === 'stand' ? 'stood' : 'playing';
+                let message = action === 'stand' ? 'スタンド' : 'ヒット';
+                if (action === 'hit') {
+                    const game = { ...current.game, deck: [...(current.game.deck || [])] };
+                    const card = game.deck.pop();
+                    if (!card) return;
+                    hand = [...hand, card];
+                    const decodedHand = hand.map(deserializeBlackjackOnlineCard).filter(Boolean);
+                    if (blackjackHandValue(decodedHand) > 21) {
+                        state = 'bust';
+                        message = 'バースト';
+                    }
+                    players[room.uid] = { ...player, hand, state, result: message };
+                    return { ...current, players, game };
+                }
+                players[room.uid] = { ...player, hand, state, result: message };
+                return { ...current, players };
+            }, undefined, false);
+            if (!result.committed) throw new Error('操作を反映できません。現在のラウンド状態を確認してください。');
+            room.public = result.snapshot.val();
+            renderBlackjackOnlineRoom(room);
+        } catch (error) {
+            console.error('ブラックジャックの操作を反映できませんでした。', error);
+            setBlackjackOnlineStatus(error.message || '操作を反映できませんでした。');
+        }
+    }
+
+    function appendBlackjackEliminations(data, eliminatedIds) {
+        const order = [...(data.eliminationOrder || [])];
+        const newIds = eliminatedIds.filter(uid => !order.includes(uid));
+        const rank = (data.playerOrder || []).length - order.length - newIds.length + 1;
+        newIds.forEach(uid => {
+            data.players[uid] = { ...data.players[uid], eliminated: true, rank, state: 'eliminated' };
+            order.push(uid);
+        });
+        data.eliminationOrder = order;
+    }
+
+    async function processBlackjackOnlineHostState(room) {
+        if (blackjackOnlineProcessing) {
+            blackjackOnlineRerun = true;
+            return;
+        }
+        if (blackjackOnlineRoom !== room || !room.public) return;
+        blackjackOnlineProcessing = true;
+        try {
+            let data = room.public;
+            if (data.status !== 'playing') return;
+            const disconnected = (data.playerOrder || []).filter(uid =>
+                data.players?.[uid]?.connected === false && !data.players[uid].eliminated);
+            if (disconnected.length) {
+                const normalized = await room.publicRef.transaction(current => {
+                    if (current?.status !== 'playing') return;
+                    const updated = JSON.parse(JSON.stringify(current));
+                    const ids = (updated.playerOrder || []).filter(uid =>
+                        updated.players?.[uid]?.connected === false && !updated.players[uid].eliminated);
+                    ids.forEach(uid => {
+                        updated.players[uid].chips = 0;
+                        updated.players[uid].state = 'bust';
+                        updated.players[uid].result = '接続切断';
+                    });
+                    appendBlackjackEliminations(updated, ids);
+                    if (updated.game?.phase === 'result') {
+                        const survivors = blackjackOnlineActivePlayers(updated);
+                        if (survivors.length === 1) {
+                            updated.status = 'finished';
+                            updated.players[survivors[0]] = {
+                                ...updated.players[survivors[0]], rank: 1, state: 'winner', result: '優勝'
+                            };
+                            updated.game.phase = 'finished';
+                            updated.game.winnerUid = survivors[0];
+                            updated.game.message = `${updated.players[survivors[0]].name} が優勝しました。`;
+                        } else if (!survivors.length) {
+                            updated.status = 'finished';
+                            updated.game.phase = 'finished';
+                            updated.game.winnerUid = null;
+                            updated.game.message = '全員が脱落しました。優勝者はいません。';
+                        }
+                    }
+                    return updated;
+                }, undefined, false);
+                if (normalized.committed) data = normalized.snapshot.val();
+            }
+            if (data.game?.phase === 'betting') {
+                const active = blackjackOnlineActivePlayers(data);
+                if (!active.length) {
+                    const result = await room.publicRef.transaction(current => {
+                        if (current?.status !== 'playing' || current.game?.phase !== 'betting') return;
+                        return { ...current, status: 'finished',
+                            game: { ...current.game, phase: 'finished', message: '参加者がいなくなりました。' } };
+                    }, undefined, false);
+                    if (result.committed) data = result.snapshot.val();
+                } else if (active.every(uid => data.players[uid].state === 'ready')) {
+                    const shoe = makeBlackjackOnlineShoe();
+                    const result = await room.publicRef.transaction(current => {
+                        if (current?.status !== 'playing' || current.game?.phase !== 'betting') return;
+                        const currentActive = blackjackOnlineActivePlayers(current);
+                        if (!currentActive.length
+                            || !currentActive.every(uid => current.players[uid].state === 'ready')) return;
+                        const players = { ...current.players };
+                        let cardIndex = shoe.length;
+                        currentActive.forEach(uid => {
+                            const player = players[uid];
+                            const bet = Number(player.bet);
+                            if (!Number.isSafeInteger(bet) || bet < 10 || bet > player.chips) return;
+                            const hand = [shoe[--cardIndex], shoe[--cardIndex]];
+                            const decoded = hand.map(deserializeBlackjackOnlineCard);
+                            const natural = blackjackHasNatural(decoded);
+                            players[uid] = { ...player, chips: player.chips - bet, hand,
+                                natural, state: natural ? 'stood' : 'playing', result: natural ? 'ブラックジャック' : '' };
+                        });
+                        const dealerHand = [shoe[--cardIndex], shoe[--cardIndex]];
+                        const dealerNatural = blackjackHasNatural(
+                            dealerHand.map(deserializeBlackjackOnlineCard)
+                        );
+                        if (dealerNatural) {
+                            currentActive.forEach(uid => {
+                                if (players[uid].state === 'playing') {
+                                    players[uid] = {
+                                        ...players[uid], state: 'stood', result: 'ディーラーのブラックジャック'
+                                    };
+                                }
+                            });
+                        }
+                        return {
+                            ...current,
+                            players,
+                            game: { ...current.game, phase: 'playing', deck: shoe.slice(0, cardIndex),
+                                dealerHand, message: dealerNatural
+                                    ? 'ディーラーのブラックジャック。ラウンドを精算します。'
+                                    : '各自ヒットまたはスタンドを選んでください。' }
+                        };
+                    }, undefined, false);
+                    if (result.committed) data = result.snapshot.val();
+                }
+            }
+            if (data.game?.phase === 'playing') {
+                const active = blackjackOnlineRoundPlayers(data);
+                if (active.length && active.every(uid =>
+                    ['stood', 'bust'].includes(data.players[uid].state))) {
+                    const settled = await room.publicRef.transaction(current => {
+                        if (current?.status !== 'playing' || current.game?.phase !== 'playing') return;
+                        const updated = JSON.parse(JSON.stringify(current));
+                        const participants = blackjackOnlineRoundPlayers(updated);
+                        if (!participants.length || !participants.every(uid =>
+                            ['stood', 'bust'].includes(updated.players[uid].state))) return;
+                        const deck = [...(updated.game.deck || [])];
+                        const dealerHand = [...(updated.game.dealerHand || [])];
+                        const dealerCards = dealerHand.map(deserializeBlackjackOnlineCard).filter(Boolean);
+                        if (participants.some(uid => updated.players[uid].state === 'stood')) {
+                            while (blackjackHandValue(dealerCards) < 17 && deck.length) {
+                                dealerCards.push(deserializeBlackjackOnlineCard(deck.pop()));
+                            }
+                        }
+                        const dealerTotal = blackjackHandValue(dealerCards);
+                        const dealerNatural = blackjackHasNatural(dealerCards);
+                        updated.game.dealerHand = dealerCards.map(serializeBlackjackOnlineCard);
+                        updated.game.deck = deck;
+                        updated.game.phase = 'result';
+                        updated.game.message = `CPUディーラー: ${dealerTotal}`;
+                        participants.forEach(uid => {
+                            const player = updated.players[uid];
+                            if (player.state === 'bust') {
+                                player.lastProfit = -player.bet;
+                                player.result = player.connected === false ? '途中退出・脱落' : 'バースト・脱落';
+                            } else {
+                                const hand = (player.hand || []).map(deserializeBlackjackOnlineCard).filter(Boolean);
+                                const total = blackjackHandValue(hand);
+                                let payout = 0;
+                                if (player.natural && dealerNatural) {
+                                    payout = player.bet;
+                                    player.result = '両者ブラックジャック・引き分け';
+                                } else if (player.natural) {
+                                    payout = player.bet * 2.5;
+                                    player.result = 'ブラックジャック！勝利';
+                                } else if (dealerTotal > 21 || total > dealerTotal) {
+                                    payout = player.bet * 2;
+                                    player.result = dealerTotal > 21 ? 'ディーラーバースト・勝利' : '勝利';
+                                } else if (total === dealerTotal) {
+                                    payout = player.bet;
+                                    player.result = '引き分け';
+                                } else {
+                                    player.result = '敗北';
+                                }
+                                player.lastProfit = payout - player.bet;
+                                player.chips += payout;
+                            }
+                            player.bet = 0;
+                            if (player.chips < 10) {
+                                player.chips = 0;
+                                player.state = 'eliminated';
+                                player.result += '・脱落';
+                            } else {
+                                player.state = 'result';
+                            }
+                        });
+                        appendBlackjackEliminations(updated,
+                            participants.filter(uid => updated.players[uid].chips < 10));
+                        const survivors = blackjackOnlineActivePlayers(updated);
+                        if (survivors.length === 1) {
+                            updated.status = 'finished';
+                            updated.players[survivors[0]] = {
+                                ...updated.players[survivors[0]], rank: 1, state: 'winner', result: '優勝'
+                            };
+                            updated.game.phase = 'finished';
+                            updated.game.winnerUid = survivors[0];
+                            updated.game.message = `${updated.players[survivors[0]].name} が優勝しました。`;
+                        } else if (!survivors.length) {
+                            updated.status = 'finished';
+                            updated.game.phase = 'finished';
+                            updated.game.winnerUid = null;
+                            updated.game.message = '全員が脱落しました。優勝者はいません。';
+                        } else {
+                            updated.game.message = 'ラウンド終了。次のラウンドへ進めます。';
+                        }
+                        return updated;
+                    }, undefined, false);
+                    if (settled.committed) data = settled.snapshot.val();
+                }
+            }
+            room.public = data;
+            renderBlackjackOnlineRoom(room);
+        } catch (error) {
+            console.error('ブラックジャックのCPUディーラー処理に失敗しました。', error);
+            setBlackjackOnlineStatus(pokerFirebaseErrorMessage(error, 'CPUディーラー処理'));
+        } finally {
+            blackjackOnlineProcessing = false;
+            if (blackjackOnlineRerun && blackjackOnlineRoom === room) {
+                blackjackOnlineRerun = false;
+                setTimeout(() => processBlackjackOnlineHostState(room), 0);
+            }
+        }
+    }
+
+    async function startBlackjackNextRound() {
+        const room = blackjackOnlineRoom;
+        if (!room?.isHost || room.public?.status !== 'playing'
+            || room.public.game?.phase !== 'result') return;
+        try {
+            const result = await room.publicRef.transaction(current => {
+                if (current?.status !== 'playing' || current.game?.phase !== 'result') return;
+                const active = blackjackOnlineActivePlayers(current);
+                if (active.length < 2) return;
+                const players = { ...current.players };
+                active.forEach(uid => {
+                    players[uid] = { ...players[uid], hand: [], bet: 0, state: 'waiting', result: '', natural: false };
+                });
+                return { ...current, players, game: {
+                    phase: 'betting',
+                    round: (current.game.round || 0) + 1,
+                    dealerHand: [],
+                    deck: [],
+                    message: '賭け額を選んで参加してください。'
+                } };
+            }, undefined, false);
+            if (!result.committed) throw new Error('次のラウンドを開始できません。参加者数を確認してください。');
+            room.public = result.snapshot.val();
+            renderBlackjackOnlineRoom(room);
+        } catch (error) {
+            console.error('ブラックジャックの次のラウンドを開始できませんでした。', error);
+            setBlackjackOnlineStatus(error.message || '次のラウンドを開始できませんでした。');
+        }
+    }
+
+    function renderBlackjackOnlineRoom(room) {
+        const data = room.public;
+        if (!data) return;
+        const game = data.game || {};
+        const order = data.playerOrder || [];
+        const ownPlayer = data.players?.[room.uid];
+        const playersList = document.getElementById('blackjack-online-players');
+        playersList.replaceChildren();
+        order.forEach((uid, index) => {
+            const player = data.players?.[uid];
+            if (!player) return;
+            const item = document.createElement('li');
+            item.className = 'blackjack-online-player';
+            const title = document.createElement('strong');
+            title.textContent = `${player.rank ? `${player.rank}位 · ` : ''}${player.name}${uid === room.uid ? '（あなた）' : ''}`;
+            const details = document.createElement('p');
+            const wins = Number.isSafeInteger(player.wins) && player.wins >= 0 ? player.wins : 0;
+            details.textContent = `勝利数: ${wins} · ${Math.max(0, Number(player.chips) || 0)}チップ · 賭け ${player.bet || 0} · ${
+                player.connected === false ? '切断' : player.result || (
+                    player.state === 'ready' ? '参加確定' : player.state === 'playing' ? 'プレイ中'
+                        : player.state === 'stood' ? 'スタンド' : player.state === 'bust' ? 'バースト'
+                            : player.state === 'eliminated' ? '脱落' : '待機中'
+                )
+            }`;
+            const cards = document.createElement('div');
+            cards.className = 'blackjack-cards';
+            (player.hand || []).forEach(cardData => {
+                const card = deserializeBlackjackOnlineCard(cardData);
+                if (card) cards.append(createCardDOM(card));
+            });
+            item.append(title, details, cards);
+            playersList.append(item);
+        });
+        const dealer = document.getElementById('blackjack-online-dealer-cards');
+        dealer.replaceChildren();
+        (game.dealerHand || []).forEach((cardData, index) => {
+            const card = deserializeBlackjackOnlineCard(cardData);
+            if (card) dealer.append(createCardDOM({ ...card,
+                faceUp: !(['playing', 'betting'].includes(game.phase) && index === 1) }));
+        });
+        const dealerCards = (game.dealerHand || []).map(deserializeBlackjackOnlineCard).filter(Boolean);
+        document.getElementById('blackjack-online-dealer-total').textContent =
+            dealerCards.length ? `合計: ${
+                game.phase === 'playing' ? blackjackHandValue(dealerCards.slice(0, 1)) + ' + ?'
+                    : blackjackHandValue(dealerCards)
+            }` : '';
+        document.getElementById('blackjack-online-start').hidden =
+            !room.isHost || data.status !== 'waiting';
+        document.getElementById('blackjack-online-next').hidden =
+            !room.isHost || data.status !== 'playing' || game.phase !== 'result';
+        document.getElementById('blackjack-online-bet-button').disabled =
+            data.status !== 'playing' || game.phase !== 'betting'
+            || !ownPlayer || ownPlayer.state !== 'waiting' || ownPlayer.chips < 10;
+        document.getElementById('blackjack-online-bet').disabled =
+            document.getElementById('blackjack-online-bet-button').disabled;
+        const canAct = data.status === 'playing' && game.phase === 'playing'
+            && ownPlayer?.state === 'playing';
+        document.getElementById('blackjack-online-hit').disabled = !canAct;
+        document.getElementById('blackjack-online-stand').disabled = !canAct;
+        setBlackjackOnlineStatus(data.status === 'waiting'
+            ? `参加者 ${order.length}/9人。ホストがトーナメントを開始します。`
+            : `${game.round || 1}ラウンド · ${game.message || ''}`);
+    }
+
     function startSolitaire() {
         if (gameStarted) return;
         gameStarted = true;
         document.body.classList.remove('poker-mode');
+        document.body.classList.remove('blackjack-mode');
         document.getElementById('poker-screen').hidden = true;
+        document.getElementById('blackjack-screen').hidden = true;
         document.getElementById('start-screen').hidden = true;
         setGameContentInert(false);
         initializeGame();
@@ -3137,7 +4665,9 @@
         gameStarted = true;
         localPokerRoom = null;
         document.getElementById('start-screen').hidden = true;
+        document.getElementById('blackjack-screen').hidden = true;
         document.body.classList.add('poker-mode');
+        document.body.classList.remove('blackjack-mode');
         document.getElementById('poker-screen').hidden = false;
         document.getElementById('poker-online-lobby').hidden = false;
         document.getElementById('poker-cpu-controls').hidden = false;
@@ -3159,14 +4689,19 @@
 
     function returnToStartScreen() {
         if (onlinePokerRoom) leavePokerRoom();
+        if (blackjackOnlineRoom) leaveBlackjackRoom();
         stopPokerRoomDirectoryListener();
+        stopBlackjackRoomDirectoryListener();
         clearTimeout(pokerDealerTimer);
         pokerDealerTimer = null;
         localPokerRoom = null;
         if (pokerAdminModeEnabled) disablePokerAdminMode();
         gameStarted = false;
         document.body.classList.remove('poker-mode');
+        document.body.classList.remove('blackjack-mode');
         document.getElementById('poker-screen').hidden = true;
+        document.getElementById('blackjack-screen').hidden = true;
+        document.getElementById('blackjack-online-panel').hidden = true;
         document.getElementById('start-screen').hidden = false;
         document.getElementById('poker-online-lobby').hidden = false;
         document.getElementById('poker-cpu-controls').hidden = false;

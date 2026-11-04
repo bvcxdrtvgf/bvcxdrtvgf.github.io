@@ -28,6 +28,22 @@
           }
         }
       }
-    }
+    },
+      "blackjackRoomDirectory": {
+        ".read": "auth != null",
+        ".indexOn": ["status"],
+        "$roomId": {
+          ".write": "auth != null && ((!data.exists() && newData.child('hostUid').val() === auth.uid) || (data.child('hostUid').val() === auth.uid && (!newData.exists() || newData.child('hostUid').val() === auth.uid)) || (data.exists() && root.child('blackjackRooms').child($roomId).child('public/players').child(auth.uid).exists() && newData.child('hostUid').val() === data.child('hostUid').val() && newData.child('hostName').val() === data.child('hostName').val() && newData.child('status').val() === data.child('status').val() && newData.child('createdAt').val() === data.child('createdAt').val() && newData.child('playerCount').isNumber() && newData.child('playerCount').val() >= 1 && newData.child('playerCount').val() <= 9))",
+          ".validate": "!newData.exists() || (newData.hasChildren(['hostUid', 'hostName', 'status', 'createdAt', 'playerCount']) && newData.child('hostUid').isString() && newData.child('hostName').isString() && newData.child('hostName').val().length > 0 && newData.child('hostName').val().length <= 16 && newData.child('status').val().matches(/^(waiting|playing)$/) && newData.child('createdAt').isNumber() && newData.child('playerCount').isNumber() && newData.child('playerCount').val() >= 1 && newData.child('playerCount').val() <= 9)"
+        }
+      },
+      "blackjackRooms": {
+        "$roomId": {
+          "public": {
+            ".read": "auth != null",
+            ".write": "auth != null && ((!data.exists() && newData.child('hostUid').val() === auth.uid && newData.child('status').val() === 'waiting') || data.child('players').child(auth.uid).exists() || (data.child('status').val() === 'waiting' && !data.child('players').child(auth.uid).exists() && newData.child('players').child(auth.uid).exists() && newData.child('hostUid').val() === data.child('hostUid').val()))"
+          }
+        }
+      }
   }
 }
