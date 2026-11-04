@@ -1202,7 +1202,7 @@
         <button type="button" onclick="unlockBlackjackAdminMode()">管理者モード</button>
     </div>
     <section id="blackjack-admin-panel" class="blackjack-hand" aria-label="ブラックジャック管理者設定" hidden>
-        <h2>管理者モード（ソロ専用）</h2>
+        <h2>管理者モード</h2>
         <div class="blackjack-info">
             <label for="blackjack-admin-wins">勝利数</label>
             <input id="blackjack-admin-wins" class="bet-input" type="number" min="0" step="1">
@@ -1210,6 +1210,10 @@
             <input id="blackjack-admin-chips" class="bet-input" type="number" min="0" step="5">
             <label for="blackjack-admin-vault">預かりチップ</label>
             <input id="blackjack-admin-vault" class="bet-input" type="number" min="0" step="5">
+            <label for="blackjack-admin-wins-fixed">勝利数を固定（オンラインでも有効）</label>
+            <input id="blackjack-admin-wins-fixed" type="checkbox">
+            <label for="blackjack-admin-online-chips-fixed">自分のオンラインチップを固定</label>
+            <input id="blackjack-admin-online-chips-fixed" type="checkbox">
             <button type="button" onclick="saveBlackjackAdminSettings()">変更を保存</button>
             <button type="button" onclick="disableBlackjackAdminMode()">管理者モードを終了</button>
         </div>
@@ -1657,6 +1661,8 @@
     let blackjackWinCount = Number(localStorage.getItem('blackjack-win-count') ?? 0);
     if (!Number.isSafeInteger(blackjackWinCount) || blackjackWinCount < 0) blackjackWinCount = 0;
     let blackjackAdminModeEnabled = false;
+    let blackjackWinsFixed = localStorage.getItem('blackjack-wins-fixed') === 'true';
+    let blackjackOnlineChipsFixed = localStorage.getItem('blackjack-online-chips-fixed') === 'true';
     let blackjackChipsEarned = Number(localStorage.getItem('blackjack-chips-earned') ?? 0);
     if (!Number.isSafeInteger(blackjackChipsEarned) || blackjackChipsEarned < 0) blackjackChipsEarned = 0;
     const blackjackAchievementDefinitions = [
@@ -3597,11 +3603,6 @@
     }
 
     function unlockBlackjackAdminMode() {
-        if (blackjackOnlineRoom || !document.getElementById('blackjack-online-panel').hidden) {
-            document.getElementById('blackjack-status').textContent =
-                '管理者モードはソロ対戦でのみ使用できます。';
-            return;
-        }
         const codeInput = document.getElementById('blackjack-admin-code');
         if (codeInput.value.trim().toUpperCase() !== adminAccessCode) {
             codeInput.value = '';
@@ -3615,16 +3616,19 @@
         document.getElementById('blackjack-admin-wins').value = blackjackWinCount;
         document.getElementById('blackjack-admin-chips').value = blackjackBankroll;
         document.getElementById('blackjack-admin-vault').value = blackjackVaultBalance;
+        document.getElementById('blackjack-admin-wins-fixed').checked = blackjackWinsFixed;
+        document.getElementById('blackjack-admin-online-chips-fixed').checked = blackjackOnlineChipsFixed;
         document.getElementById('blackjack-admin-panel').hidden = false;
-        document.getElementById('blackjack-status').textContent =
-            '管理者モードを有効にしました。勝利数と所持チップを変更できます。';
+        const statusId = document.getElementById('blackjack-online-panel').hidden
+            ? 'blackjack-status' : 'blackjack-online-status';
+        document.getElementById(statusId).textContent =
+            '管理者モードを有効にしました。勝利数とオンラインの固定設定を変更できます。';
     }
 
-    function saveBlackjackAdminSettings() {
-        if (!blackjackAdminModeEnabled || blackjackOnlineRoom
-            || !document.getElementById('blackjack-online-panel').hidden) {
+    async function saveBlackjackAdminSettings() {
+        if (!blackjackAdminModeEnabled) {
             document.getElementById('blackjack-status').textContent =
-                '管理者認証後、ソロ対戦でのみ設定を変更できます。';
+                '管理者認証後に設定を変更できます。';
             return;
         }
         const winsInput = document.getElementById('blackjack-admin-wins');
@@ -3648,16 +3652,26 @@
                 '預かりチップは0以上、5チップ単位で入力してください。';
             return;
         }
+        blackjackWinsFixed = document.getElementById('blackjack-admin-wins-fixed').checked;
+        blackjackOnlineChipsFixed = document.getElementById('blackjack-admin-online-chips-fixed').checked;
+        localStorage.setItem('blackjack-wins-fixed', String(blackjackWinsFixed));
+        localStorage.setItem('blackjack-online-chips-fixed', String(blackjackOnlineChipsFixed));
         blackjackWinCount = wins;
-        blackjackBankroll = chips;
         blackjackVaultBalance = vault;
         localStorage.setItem('blackjack-win-count', String(blackjackWinCount));
         document.getElementById('blackjack-win-count').textContent = blackjackWinCount;
-        saveBlackjackBankroll();
+        if (!blackjackOnlineRoom) {
+            blackjackBankroll = chips;
+            saveBlackjackBankroll();
+            renderBlackjack();
+        }
+        if (blackjackOnlineRoom && !await syncBlackjackOnlineAdminSettings(blackjackOnlineRoom)) return;
         unlockQualifiedBlackjackAchievements();
-        renderBlackjack();
-        document.getElementById('blackjack-status').textContent =
-            `勝利数を${wins}、所持チップを${chips}、預かりチップを${vault}に変更しました。`;
+        const message = blackjackOnlineRoom
+            ? `勝利数を${wins}に設定し、固定設定を保存しました。オンラインチップ固定は次の精算から適用されます。`
+            : `勝利数を${wins}、所持チップを${chips}、預かりチップを${vault}に変更しました。`;
+        document.getElementById(blackjackOnlineRoom ? 'blackjack-online-status' : 'blackjack-status')
+            .textContent = message;
     }
 
     function disableBlackjackAdminMode() {
@@ -3667,6 +3681,7 @@
     }
 
     function addBlackjackVictory() {
+        if (blackjackWinsFixed) return;
         blackjackWinCount++;
         localStorage.setItem('blackjack-win-count', String(blackjackWinCount));
         document.getElementById('blackjack-win-count').textContent = blackjackWinCount;
@@ -3744,6 +3759,23 @@
                 setBlackjackOnlineStatus(pokerFirebaseErrorMessage(error, '勝利数の同期'));
             }
         });
+    }
+
+    function syncBlackjackOnlineAdminSettings(room) {
+        room.adminSettingsReady = false;
+        room.adminSettingsPromise = room.publicRef.child(`players/${room.uid}/chipsFixed`)
+            .set(blackjackOnlineChipsFixed)
+            .then(() => {
+                room.adminSettingsReady = true;
+                if (room.public && blackjackOnlineRoom === room) renderBlackjackOnlineRoom(room);
+                return true;
+            })
+            .catch(error => {
+                console.error('ブラックジャックのオンライン固定設定を同期できませんでした。', error);
+                setBlackjackOnlineStatus(pokerFirebaseErrorMessage(error, '管理者設定の同期'));
+                return false;
+            });
+        return room.adminSettingsPromise;
     }
 
     function recordBlackjackOnlineVictory(room) {
@@ -3959,8 +3991,6 @@
     }
 
     function openBlackjackOnline() {
-        if (blackjackAdminModeEnabled) disableBlackjackAdminMode();
-        document.getElementById('blackjack-admin-access').hidden = true;
         document.getElementById('blackjack-solo-area').hidden = true;
         document.getElementById('blackjack-online-open').hidden = true;
         document.getElementById('blackjack-online-panel').hidden = false;
@@ -4215,6 +4245,7 @@
     function attachBlackjackRoom(room) {
         if (blackjackOnlineRoom) detachBlackjackRoom();
         room.presenceRef = room.publicRef.child(`players/${room.uid}`);
+        syncBlackjackOnlineAdminSettings(room);
         room.publicListener = snapshot => {
             if (blackjackOnlineRoom !== room) return;
             if (!snapshot.exists()) {
@@ -4313,6 +4344,10 @@
     async function startBlackjackTournament() {
         const room = blackjackOnlineRoom;
         if (!room?.isHost || room.public?.status !== 'waiting') return;
+        if (!await room.adminSettingsPromise) {
+            setBlackjackOnlineStatus('管理者設定を同期できないため開始できません。接続を確認してください。');
+            return;
+        }
         const startingChipsInput = document.getElementById('blackjack-online-starting-chips');
         const startingChips = Number(startingChipsInput.value);
         if (!startingChipsInput.value.trim() || !Number.isSafeInteger(startingChips)
@@ -4398,6 +4433,9 @@
             return;
         }
         try {
+            if (!await room.adminSettingsPromise) {
+                throw new Error('管理者設定を同期できません。接続を確認してください。');
+            }
             const result = await room.publicRef.transaction(current => {
                 const player = current?.players?.[room.uid];
                 if (current?.status !== 'playing' || current.game?.phase !== 'betting'
@@ -4536,7 +4574,12 @@
                             const hand = [shoe[--cardIndex], shoe[--cardIndex]];
                             const decoded = hand.map(deserializeBlackjackOnlineCard);
                             const natural = blackjackHasNatural(decoded);
-                            players[uid] = { ...player, chips: player.chips - bet, hand,
+                            players[uid] = {
+                                ...player,
+                                chips: player.chipsFixed ? player.chips : player.chips - bet,
+                                roundStartChips: player.chips,
+                                roundChipsFixed: Boolean(player.chipsFixed),
+                                hand,
                                 natural, state: natural ? 'stood' : 'playing', result: natural ? 'ブラックジャック' : '' };
                         });
                         const dealerHand = [shoe[--cardIndex], shoe[--cardIndex]];
@@ -4590,13 +4633,13 @@
                         updated.game.message = `CPUディーラー: ${dealerTotal}`;
                         participants.forEach(uid => {
                             const player = updated.players[uid];
+                            let payout = 0;
                             if (player.state === 'bust') {
                                 player.lastProfit = -player.bet;
                                 player.result = player.connected === false ? '途中退出・脱落' : 'バースト・脱落';
                             } else {
                                 const hand = (player.hand || []).map(deserializeBlackjackOnlineCard).filter(Boolean);
                                 const total = blackjackHandValue(hand);
-                                let payout = 0;
                                 if (player.natural && dealerNatural) {
                                     payout = player.bet;
                                     player.result = '両者ブラックジャック・引き分け';
@@ -4613,8 +4656,9 @@
                                     player.result = '敗北';
                                 }
                                 player.lastProfit = payout - player.bet;
-                                player.chips += payout;
                             }
+                            if (player.roundChipsFixed) player.chips = player.roundStartChips;
+                            else if (player.state !== 'bust') player.chips += payout;
                             player.bet = 0;
                             if (player.chips < 1) {
                                 player.chips = 0;
@@ -4710,7 +4754,8 @@
             const details = document.createElement('p');
             const wins = Number.isSafeInteger(player.wins) && player.wins >= 0 ? player.wins : 0;
             const chips = Math.max(0, Number(player.chips) || 0);
-            details.textContent = `勝利数: ${wins} · ${chips.toLocaleString('ja-JP', { maximumFractionDigits: 1 })}チップ · 賭け ${player.bet || 0} · ${
+            const fixedLabel = uid === room.uid && player.chipsFixed ? ' · チップ固定中' : '';
+            details.textContent = `勝利数: ${wins} · ${chips.toLocaleString('ja-JP', { maximumFractionDigits: 1 })}チップ${fixedLabel} · 賭け ${player.bet || 0} · ${
                 player.connected === false ? '切断' : player.result || (
                     player.state === 'ready' ? '参加確定' : player.state === 'playing' ? 'プレイ中'
                         : player.state === 'stood' ? 'スタンド' : player.state === 'bust' ? 'バースト'
@@ -4741,6 +4786,8 @@
             }` : '';
         document.getElementById('blackjack-online-start').hidden =
             !room.isHost || data.status !== 'waiting';
+        document.getElementById('blackjack-online-start').disabled =
+            !room.adminSettingsReady;
         const showStartingChips = room.isHost && data.status === 'waiting';
         document.getElementById('blackjack-online-starting-chips-label').hidden = !showStartingChips;
         document.getElementById('blackjack-online-starting-chips').hidden = !showStartingChips;
