@@ -1209,7 +1209,7 @@
             <label for="blackjack-admin-chips">所持チップ（ソロ専用）</label>
             <input id="blackjack-admin-chips" class="bet-input" type="number" min="0" step="5">
             <label for="blackjack-admin-vault">預かりチップ（ソロ専用）</label>
-            <input id="blackjack-admin-vault" class="bet-input" type="number" min="0" step="5">
+            <input id="blackjack-admin-vault" class="bet-input" type="number" min="0" max="500000000" step="5">
             <label for="blackjack-admin-wins-fixed">勝利数を固定（オンラインでも有効）</label>
             <input id="blackjack-admin-wins-fixed" type="checkbox">
             <label for="blackjack-admin-online-chips-fixed">自分のオンラインチップを固定</label>
@@ -1236,10 +1236,11 @@
     <section class="blackjack-hand" aria-labelledby="blackjack-bank-title">
         <h2 id="blackjack-bank-title">チップ預かり所（ソロ専用）</h2>
         <p>預けたチップは勝負に使われません。使う時は所持チップへ引き出してください。</p>
+        <p>預けられる上限は500,000,000チップです。</p>
         <p><strong>預かりチップ: <span id="blackjack-vault-balance">0</span></strong></p>
         <div class="blackjack-info">
             <label for="blackjack-vault-transfer">預ける／引き出す枚数</label>
-            <input id="blackjack-vault-transfer" class="bet-input" type="number" min="5" step="5" value="10">
+            <input id="blackjack-vault-transfer" class="bet-input" type="number" min="5" max="500000000" step="5" value="10">
             <button id="blackjack-vault-deposit" type="button" onclick="transferBlackjackVault('deposit')">預ける</button>
             <button id="blackjack-vault-withdraw" type="button" onclick="transferBlackjackVault('withdraw')">引き出す</button>
         </div>
@@ -1658,6 +1659,10 @@
     let blackjackVaultBalance = Number(localStorage.getItem('blackjack-vault-balance') ?? 0);
     if (!Number.isSafeInteger(blackjackVaultBalance) || blackjackVaultBalance < 0
         || blackjackVaultBalance % 5 !== 0) blackjackVaultBalance = 0;
+    if (blackjackVaultBalance > 500000000) {
+        blackjackVaultBalance = 500000000;
+        localStorage.setItem('blackjack-vault-balance', String(blackjackVaultBalance));
+    }
     let blackjackWinCount = Number(localStorage.getItem('blackjack-win-count') ?? 0);
     if (!Number.isSafeInteger(blackjackWinCount) || blackjackWinCount < 0) blackjackWinCount = 0;
     let blackjackAdminModeEnabled = false;
@@ -3657,9 +3662,10 @@
                 '所持チップは0以上、5チップ単位で入力してください。';
             return;
         }
-        if (!isOnline && (!vaultInput.value.trim() || !Number.isSafeInteger(vault) || vault < 0 || vault % 5 !== 0)) {
+        if (!isOnline && (!vaultInput.value.trim() || !Number.isSafeInteger(vault) ||
+            vault < 0 || vault > 500000000 || vault % 5 !== 0)) {
             document.getElementById(statusId).textContent =
-                '預かりチップは0以上、5チップ単位で入力してください。';
+                '預かりチップは0以上500,000,000以下、5チップ単位で入力してください。';
             return;
         }
         if (blackjackOnlineRoom) {
@@ -3901,6 +3907,11 @@
             if (amount > blackjackBankroll) {
                 document.getElementById('blackjack-status').textContent =
                     '預ける枚数が所持チップを超えています。';
+                return;
+            }
+            if (amount > 500000000 - blackjackVaultBalance) {
+                document.getElementById('blackjack-status').textContent =
+                    '預かりチップの上限は500,000,000枚です。';
                 return;
             }
             blackjackBankroll -= amount;
