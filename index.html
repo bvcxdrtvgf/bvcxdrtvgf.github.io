@@ -4538,8 +4538,11 @@
                     throw new Error('この部屋では参加者を募集していません。');
                 }
                 result = await publicRef.transaction(current => {
-                    const latest = current;
-                    if (!latest) return;
+                    const latest = current || previouslyRead;
+                    if (!latest) {
+                        abortReason = '部屋が見つかりません。ホストが部屋を閉じた可能性があります。';
+                        return;
+                    }
                     const players = { ...(latest.players || {}) };
                     if (players[user.uid]) {
                         players[user.uid] = {
