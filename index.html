@@ -4711,28 +4711,22 @@
             return;
         }
         try {
-            const snapshot = await room.publicRef.once('value');
-            const previouslyRead = snapshot.val();
-            if (!previouslyRead) throw new Error('部屋が見つかりません。部屋を作り直してください。');
             let abortReason = '';
-            let transactionAttempts = 0;
             const result = await room.publicRef.transaction(current => {
-                transactionAttempts++;
-                const latest = current || (transactionAttempts === 1 ? previouslyRead : null);
-                if (!latest) {
-                    abortReason = '部屋が終了したため、開始できませんでした。';
+                if (!current) {
+                    abortReason = '部屋が見つからないか、終了しています。部屋を作り直してください。';
                     return;
                 }
-                if (latest.status !== 'waiting') {
+                if (current.status !== 'waiting') {
                     abortReason = 'この部屋ではすでにトーナメントが開始されています。';
                     return;
                 }
-                if (!latest.players?.[room.uid] || latest.hostUid !== room.uid) {
+                if (!current.players?.[room.uid] || current.hostUid !== room.uid) {
                     abortReason = 'ホスト情報を確認できません。部屋を作り直してください。';
                     return;
                 }
-                const players = { ...latest.players };
-                const order = (latest.playerOrder || []).filter(uid =>
+                const players = { ...current.players };
+                const order = (current.playerOrder || []).filter(uid =>
                     players[uid]?.connected !== false);
                 if (order.length < 1) {
                     abortReason = '接続中のプレイヤーがいないため、トーナメントを開始できません。';
@@ -4750,7 +4744,7 @@
                         state: 'waiting', result: '', rank: null, eliminated: false };
                 });
                 return {
-                    ...latest,
+                    ...current,
                     status: 'playing',
                     startingChips,
                     players,
