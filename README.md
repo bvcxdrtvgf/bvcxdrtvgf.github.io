@@ -2,6 +2,8 @@
 
 ## Firebaseオンライン対戦の有効化
 
+全ゲーム共通の隠し実績は画面左下の「？？？」から確認できます。未獲得の実績名や条件は表示されません。ダイアログ内のテキストボックスに入力して挑戦します。
+
 オンライン対戦はFirebase Authenticationの匿名ログインとRealtime Databaseを使います。
 
 1. Firebase ConsoleでAuthenticationの「匿名」ログインを有効にします。

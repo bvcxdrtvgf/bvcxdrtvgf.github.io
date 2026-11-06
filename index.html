@@ -387,6 +387,41 @@
         .blackjack-screen[hidden] {
             display: none;
         }
+        .shared-hidden-achievement-button {
+            position: fixed;
+            bottom: 12px;
+            left: 12px;
+            z-index: 1001;
+        }
+        .shared-hidden-achievement-dialog {
+            width: min(520px, calc(100% - 32px));
+            max-height: min(80vh, 620px);
+            padding: 18px;
+            border: 1px solid rgba(255,255,255,0.7);
+            border-radius: 10px;
+            background: #17620b;
+            color: white;
+        }
+        .shared-hidden-achievement-dialog::backdrop {
+            background: rgba(0,0,0,0.65);
+        }
+        .shared-hidden-achievement-list {
+            display: grid;
+            gap: 8px;
+            padding-left: 24px;
+        }
+        .shared-hidden-achievement-entry {
+            display: flex;
+            gap: 8px;
+        }
+        .shared-hidden-achievement-form {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+        .shared-hidden-achievement-form input {
+            flex: 1 1 220px;
+        }
         .blackjack-screen h1,
         .blackjack-screen h2 {
             margin: 0 0 16px;
@@ -1053,6 +1088,21 @@
     </div>
 </main>
 
+<button id="shared-hidden-achievement-button" class="shared-hidden-achievement-button" type="button"
+    onclick="openSharedHiddenAchievements()" aria-label="隠し実績">？？？</button>
+<dialog id="shared-hidden-achievement-dialog" class="shared-hidden-achievement-dialog"
+    aria-labelledby="shared-hidden-achievement-title">
+    <h2 id="shared-hidden-achievement-title">隠し実績</h2>
+    <ul id="shared-hidden-achievement-list" class="shared-hidden-achievement-list"></ul>
+    <form class="shared-hidden-achievement-form" onsubmit="submitSharedHiddenAchievement(event)">
+        <label for="shared-hidden-achievement-input">テキストボックス</label>
+        <input id="shared-hidden-achievement-input" type="text" maxlength="64" autocomplete="off">
+        <button type="submit">入力</button>
+    </form>
+    <p id="shared-hidden-achievement-status" aria-live="polite"></p>
+    <form method="dialog"><button type="submit">閉じる</button></form>
+</dialog>
+
 <main id="poker-screen" class="poker-screen" aria-labelledby="poker-title" hidden>
     <aside id="poker-online-roster" class="poker-online-roster" aria-label="オンラインプレイヤー一覧" hidden>
         <h2>プレイヤー / 勝利数</h2>
@@ -1571,6 +1621,87 @@
         { name: 'S', char: '♠', color: 'black' }
     ];
     const ranks = ['A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K'];
+    const sharedHiddenAchievementDefinitions = [
+        { id: 'bad-time', title: 'BAD TIME' },
+        { id: 'made-in-heaven', title: 'メイドインヘブン' }
+    ];
+    const madeInHeavenSequence = [
+        'らせん階段', 'カブト虫', '廃墟の街', 'イチジクのタルト', 'カブト虫',
+        'ドロローサへの道', 'カブト虫', '特異点', 'ジョット', '天使',
+        '紫陽花', 'カブト虫', '特異点', '秘密の皇帝'
+    ];
+    const sharedHiddenAchievements = new Set(
+        JSON.parse(localStorage.getItem('shared-hidden-achievements') || '[]')
+            .filter(id => sharedHiddenAchievementDefinitions.some(achievement => achievement.id === id))
+    );
+    let madeInHeavenProgress = Number(localStorage.getItem('made-in-heaven-progress') || 0);
+    if (!Number.isInteger(madeInHeavenProgress) || madeInHeavenProgress < 0 ||
+        madeInHeavenProgress >= madeInHeavenSequence.length ||
+        sharedHiddenAchievements.has('made-in-heaven')) {
+        madeInHeavenProgress = 0;
+        localStorage.removeItem('made-in-heaven-progress');
+    }
+
+    function renderSharedHiddenAchievements() {
+        const list = document.getElementById('shared-hidden-achievement-list');
+        if (!list) return;
+        list.replaceChildren();
+        sharedHiddenAchievementDefinitions.forEach(achievement => {
+            const item = document.createElement('li');
+            item.className = 'shared-hidden-achievement-entry';
+            const title = sharedHiddenAchievements.has(achievement.id)
+                ? `獲得済み: ${achievement.title}`
+                : '？？？';
+            item.textContent = title;
+            list.append(item);
+        });
+    }
+
+    function openSharedHiddenAchievements() {
+        renderSharedHiddenAchievements();
+        document.getElementById('shared-hidden-achievement-status').textContent = '';
+        document.getElementById('shared-hidden-achievement-dialog').showModal();
+    }
+
+    function unlockSharedHiddenAchievement(id) {
+        if (sharedHiddenAchievements.has(id)) return;
+        sharedHiddenAchievements.add(id);
+        localStorage.setItem('shared-hidden-achievements', JSON.stringify([...sharedHiddenAchievements]));
+        renderSharedHiddenAchievements();
+    }
+
+    function submitSharedHiddenAchievement(event) {
+        event.preventDefault();
+        const input = document.getElementById('shared-hidden-achievement-input');
+        const value = input.value.trim();
+        input.value = '';
+        if (!value) return;
+
+        if (value.toLocaleLowerCase() === 'sans the skeleton') {
+            unlockSharedHiddenAchievement('bad-time');
+        } else if (!sharedHiddenAchievements.has('made-in-heaven')) {
+            if (value === madeInHeavenSequence[madeInHeavenProgress]) {
+                madeInHeavenProgress++;
+                if (madeInHeavenProgress === madeInHeavenSequence.length) {
+                    unlockSharedHiddenAchievement('made-in-heaven');
+                    madeInHeavenProgress = 0;
+                    localStorage.removeItem('made-in-heaven-progress');
+                } else {
+                    localStorage.setItem('made-in-heaven-progress', String(madeInHeavenProgress));
+                }
+            } else {
+                madeInHeavenProgress = value === madeInHeavenSequence[0] ? 1 : 0;
+                if (madeInHeavenProgress) {
+                    localStorage.setItem('made-in-heaven-progress', String(madeInHeavenProgress));
+                } else {
+                    localStorage.removeItem('made-in-heaven-progress');
+                }
+            }
+        }
+        document.getElementById('shared-hidden-achievement-status').textContent = '入力を確認しました。';
+        input.focus();
+    }
+
     const characterImages = [
         { name: 'エルフィン', src: 'img/エルフィン.png' },
         { name: 'ヴィヴィ', src: 'img/ヴィヴィ.png' },
@@ -3601,7 +3732,8 @@
 
     function setGameContentInert(inert) {
         [...document.body.children].forEach(element => {
-            if (element.id !== 'start-screen' && element.tagName !== 'SCRIPT') {
+            if (!['start-screen', 'shared-hidden-achievement-button', 'shared-hidden-achievement-dialog']
+                .includes(element.id) && element.tagName !== 'SCRIPT') {
                 element.inert = inert;
             }
         });
