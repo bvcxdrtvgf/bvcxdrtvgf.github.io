@@ -4096,24 +4096,35 @@
 
     function syncBlackjackOnlineAdminSettings(room, chipsFixed = blackjackOnlineChipsFixed) {
         room.adminSettingsReady = false;
-        room.adminSettingsPromise = room.publicRef.transaction(current => {
-            const player = current?.players?.[room.uid];
-            if (!player) return;
-            return {
-                ...current,
-                players: { ...current.players, [room.uid]: { ...player, chipsFixed } }
-            };
-        }).then(result => {
-            if (!result.committed) throw new Error('プレイヤー設定を保存できませんでした。');
-            room.adminSettingsReady = true;
-            room.public = result.snapshot.val();
-            if (room.public && blackjackOnlineRoom === room) renderBlackjackOnlineRoom(room);
-            return true;
-        }).catch(error => {
-            console.error('ブラックジャックのオンライン固定設定を同期できませんでした。', error);
-            setBlackjackOnlineStatus(pokerFirebaseErrorMessage(error, '管理者設定の同期'));
-            return false;
-        });
+        room.adminSettingsPromise = (async () => {
+            try {
+                const snapshot = await room.publicRef.once('value');
+                const previouslyRead = snapshot.val();
+                if (!previouslyRead?.players?.[room.uid]) {
+                    throw new Error('部屋のプレイヤー情報を読み込めません。部屋に入り直してください。');
+                }
+                let usePreviouslyRead = true;
+                const result = await room.publicRef.transaction(current => {
+                    const latest = current || (usePreviouslyRead ? previouslyRead : null);
+                    usePreviouslyRead = false;
+                    const player = latest?.players?.[room.uid];
+                    if (!player) return;
+                    return {
+                        ...latest,
+                        players: { ...latest.players, [room.uid]: { ...player, chipsFixed } }
+                    };
+                }, undefined, false);
+                if (!result.committed) throw new Error('プレイヤー設定を保存できませんでした。');
+                room.adminSettingsReady = true;
+                room.public = result.snapshot.val();
+                if (room.public && blackjackOnlineRoom === room) renderBlackjackOnlineRoom(room);
+                return true;
+            } catch (error) {
+                console.error('ブラックジャックのオンライン固定設定を同期できませんでした。', error);
+                setBlackjackOnlineStatus(pokerFirebaseErrorMessage(error, '管理者設定の同期'));
+                return false;
+            }
+        })();
         return room.adminSettingsPromise;
     }
 
@@ -4712,21 +4723,27 @@
         }
         try {
             let abortReason = '';
+            const snapshot = await room.publicRef.once('value');
+            const previouslyRead = snapshot.val();
+            if (!previouslyRead) throw new Error('部屋が見つかりません。部屋を作り直してください。');
+            let usePreviouslyRead = true;
             const result = await room.publicRef.transaction(current => {
-                if (!current) {
+                const latest = current || (usePreviouslyRead ? previouslyRead : null);
+                usePreviouslyRead = false;
+                if (!latest) {
                     abortReason = '部屋が見つからないか、終了しています。部屋を作り直してください。';
                     return;
                 }
-                if (current.status !== 'waiting') {
+                if (latest.status !== 'waiting') {
                     abortReason = 'この部屋ではすでにトーナメントが開始されています。';
                     return;
                 }
-                if (!current.players?.[room.uid] || current.hostUid !== room.uid) {
+                if (!latest.players?.[room.uid] || latest.hostUid !== room.uid) {
                     abortReason = 'ホスト情報を確認できません。部屋を作り直してください。';
                     return;
                 }
-                const players = { ...current.players };
-                const order = (current.playerOrder || []).filter(uid =>
+                const players = { ...latest.players };
+                const order = (latest.playerOrder || []).filter(uid =>
                     players[uid]?.connected !== false);
                 if (order.length < 1) {
                     abortReason = '接続中のプレイヤーがいないため、トーナメントを開始できません。';
@@ -4744,7 +4761,7 @@
                         state: 'waiting', result: '', rank: null, eliminated: false };
                 });
                 return {
-                    ...current,
+                    ...latest,
                     status: 'playing',
                     startingChips,
                     players,
