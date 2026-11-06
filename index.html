@@ -1056,7 +1056,7 @@
 <main id="poker-screen" class="poker-screen" aria-labelledby="poker-title" hidden>
     <aside id="poker-online-roster" class="poker-online-roster" aria-label="オンラインプレイヤー一覧" hidden>
         <h2>プレイヤー / 勝利数</h2>
-        <ul id="poker-online-roster-list"></ul>
+        <ul id="poker-online-roster-list" aria-label="プレイヤーと実績"></ul>
     </aside>
     <button class="poker-help-button" type="button" onclick="document.getElementById('poker-help-dialog').showModal()" aria-label="ポーカーのルールと役" title="ルールと役">i</button>
     <h1 id="poker-title">テキサスホールデム</h1>
@@ -1295,7 +1295,7 @@
                 <div id="blackjack-online-dealer-cards" class="blackjack-cards" aria-label="CPUディーラーのカード"></div>
                 <p id="blackjack-online-dealer-total" class="blackjack-total"></p>
             </section>
-            <ul id="blackjack-online-players" class="blackjack-online-player-list" aria-label="参加者と順位"></ul>
+            <ul id="blackjack-online-players" class="blackjack-online-player-list" aria-label="参加者、順位、実績"></ul>
             <div class="blackjack-online-actions">
                 <button id="blackjack-online-hit" type="button" onclick="actBlackjackOnline('hit')" disabled>ヒット</button>
                 <button id="blackjack-online-stand" type="button" onclick="actBlackjackOnline('stand')" disabled>スタンド</button>
@@ -1320,6 +1320,8 @@
     </dialog>
     <dialog id="blackjack-achievement-dialog" class="achievement-dialog" aria-labelledby="blackjack-achievement-title">
         <h2 id="blackjack-achievement-title">ブラックジャック実績</h2>
+        <h3>オンラインのプレイヤー一覧に表示する実績</h3>
+        <div id="blackjack-achievement-display-buttons" class="poker-achievement-buttons"></div>
         <ul id="blackjack-achievement-list" class="achievement-list"></ul>
         <form method="dialog"><button type="submit">閉じる</button></form>
     </dialog>
@@ -1354,6 +1356,8 @@
 </dialog>
 <dialog id="achievement-dialog" class="achievement-dialog" aria-labelledby="achievement-title">
     <h2 id="achievement-title">実績</h2>
+    <h3>オンラインのプレイヤー一覧に表示する実績</h3>
+    <div id="solitaire-achievement-display-buttons" class="poker-achievement-buttons"></div>
     <ul id="achievement-list" class="achievement-list"></ul>
     <form method="dialog">
         <button type="submit">閉じる</button>
@@ -1457,7 +1461,7 @@
         <button id="online-join-button" type="button" onclick="joinOnlineMatch()">部屋に参加</button>
         <button id="online-leave-button" type="button" onclick="leaveOnlineMatch()" hidden>対戦を終了</button>
     </div>
-    <ul id="online-match-players" class="online-match-players" aria-label="オンライン対戦プレイヤー" hidden></ul>
+    <ul id="online-match-players" class="online-match-players" aria-label="オンライン対戦プレイヤーと実績" hidden></ul>
     <p id="online-match-status" class="online-match-status" aria-live="polite"></p>
 </section>
 
@@ -1610,6 +1614,7 @@
     let victoryCount = Number(localStorage.getItem('solitaire-victory-count')) || 0;
     let totalWins = Number(localStorage.getItem('solitaire-total-wins')) || 0;
     let unlockedAchievements = new Set(JSON.parse(localStorage.getItem('solitaire-achievements') || '[]'));
+    let selectedSolitaireAchievement = localStorage.getItem('solitaire-selected-achievement') || '';
     let dailyResetProgress = JSON.parse(localStorage.getItem('solitaire-daily-resets') || '{}');
     let characterCardSet = Number(localStorage.getItem('solitaire-character-card-set')) || (localStorage.getItem('solitaire-character-marks') === 'true' ? 1 : 0);
     let characterMarksEnabled = characterCardSet !== 0;
@@ -1683,6 +1688,11 @@
     let unlockedBlackjackAchievements = new Set(
         JSON.parse(localStorage.getItem('blackjack-achievements-v1') || '[]')
     );
+    let selectedBlackjackAchievement = localStorage.getItem('blackjack-selected-achievement') || '';
+    if (!blackjackAchievementDefinitions.some(achievement => achievement.id === selectedBlackjackAchievement)
+        || !unlockedBlackjackAchievements.has(selectedBlackjackAchievement)) {
+        selectedBlackjackAchievement = '';
+    }
     let blackjackShoe = [];
     let blackjackPlayerHand = [];
     let blackjackDealerHand = [];
@@ -1733,6 +1743,10 @@
         { id: 'shogi', title: '将棋', condition: '1時間以上プレイしてからクリアすると獲得', qualifies: () => elapsedSeconds >= 3600 },
         { id: 'gambler', title: 'ギャンブラー', condition: '賭けを使い、1回の勝利で100以上を獲得すると獲得', qualifies: () => currentBet > 0 && currentBet * (currentDifficulty === 'easy' ? 1.5 : currentDifficulty === 'hard' ? 2.5 : 2) >= 100 }
     ];
+    if (!achievementDefinitions.some(achievement => achievement.id === selectedSolitaireAchievement)
+        || !unlockedAchievements.has(selectedSolitaireAchievement)) {
+        selectedSolitaireAchievement = '';
+    }
 
     let personalRecords = loadPersonalRecords();
 
@@ -1841,6 +1855,48 @@
         localStorage.setItem('solitaire-achievements', JSON.stringify([...unlockedAchievements]));
     }
 
+    function renderSolitaireAchievementDisplayButtons() {
+        const container = document.getElementById('solitaire-achievement-display-buttons');
+        if (!container) return;
+        container.replaceChildren();
+        const options = [{ id: '', title: '表示しない' }, ...achievementDefinitions];
+        options.forEach(achievement => {
+            const button = document.createElement('button');
+            button.type = 'button';
+            const unlocked = !achievement.id || unlockedAchievements.has(achievement.id);
+            button.textContent = achievement.id
+                ? `${unlocked ? '✓' : '🔒'} ${achievement.title}`
+                : achievement.title;
+            button.disabled = !unlocked;
+            button.setAttribute('aria-pressed', String(selectedSolitaireAchievement === achievement.id));
+            button.addEventListener('click', () => selectSolitaireAchievement(achievement.id));
+            container.append(button);
+        });
+    }
+
+    async function selectSolitaireAchievement(id) {
+        if (id && !unlockedAchievements.has(id)) return;
+        selectedSolitaireAchievement = id;
+        localStorage.setItem('solitaire-selected-achievement', id);
+        renderSolitaireAchievementDisplayButtons();
+        if (!onlineMatch) return;
+        try {
+            const match = onlineMatch;
+            const result = await match.roomRef.transaction(room => {
+                const player = room?.[match.role];
+                if (!player || player.uid !== match.uid) return;
+                room[match.role] = { ...player, achievement: id || null };
+                return room;
+            });
+            if (!result.committed) throw new Error('プレイヤー情報を更新できませんでした。');
+            renderOnlineMatchPlayers(result.snapshot.val());
+        } catch (error) {
+            console.error('ソリティアの実績表示を同期できませんでした。', error);
+            document.getElementById('online-match-status').textContent =
+                `実績表示の同期に失敗しました: ${error.message}`;
+        }
+    }
+
     function unlockEligibleAchievements() {
         const newlyUnlocked = [];
         achievementDefinitions.forEach(achievement => {
@@ -1854,6 +1910,7 @@
     }
 
     function renderAchievements() {
+        renderSolitaireAchievementDisplayButtons();
         const list = document.getElementById('achievement-list');
         list.replaceChildren();
         achievementDefinitions.forEach(achievement => {
@@ -2769,6 +2826,10 @@
             item.className = 'online-match-player';
             const name = document.createElement('strong');
             name.textContent = player.name;
+            const achievementTitle = achievementDefinitions.find(
+                achievement => achievement.id === player.achievement
+            )?.title;
+            appendPlayerAchievementBadge(name, achievementTitle);
             const record = document.createElement('span');
             const victories = Number.isFinite(Number(player.victoryCount)) ? Number(player.victoryCount) : 0;
             const clears = Number.isFinite(Number(player.totalWins)) ? Number(player.totalWins) : 0;
@@ -2827,7 +2888,10 @@
                         status: 'waiting',
                         seed: crypto.getRandomValues(new Uint32Array(1))[0],
                         difficulty: document.getElementById('difficulty').value,
-                        host: { uid: user.uid, name, victoryCount, totalWins },
+                        host: {
+                            uid: user.uid, name, victoryCount, totalWins,
+                            achievement: selectedSolitaireAchievement || null
+                        },
                         guest: null,
                         winner: null,
                         createdAt: Date.now()
@@ -2887,7 +2951,10 @@
             const roomRef = onlineFirebaseDatabase.ref(`solitaireOnlineRooms/${roomCode}`);
             const result = await roomRef.transaction(room => {
                 if (!room || room.status !== 'waiting' || room.guest || room.host.uid === user.uid) return;
-                room.guest = { uid: user.uid, name, victoryCount, totalWins };
+                room.guest = {
+                    uid: user.uid, name, victoryCount, totalWins,
+                    achievement: selectedSolitaireAchievement || null
+                };
                 room.status = 'playing';
                 return room;
             });
@@ -3717,6 +3784,43 @@
         renderBlackjackAchievements();
     }
 
+    function renderBlackjackAchievementDisplayButtons() {
+        const container = document.getElementById('blackjack-achievement-display-buttons');
+        if (!container) return;
+        container.replaceChildren();
+        const options = [{ id: '', title: '表示しない' }, ...blackjackAchievementDefinitions];
+        options.forEach(achievement => {
+            const button = document.createElement('button');
+            button.type = 'button';
+            const unlocked = !achievement.id || unlockedBlackjackAchievements.has(achievement.id);
+            button.textContent = achievement.id
+                ? `${unlocked ? '✓' : '🔒'} ${achievement.title}`
+                : achievement.title;
+            button.disabled = !unlocked;
+            button.setAttribute('aria-pressed', String(selectedBlackjackAchievement === achievement.id));
+            button.addEventListener('click', () => selectBlackjackAchievement(achievement.id));
+            container.append(button);
+        });
+    }
+
+    function selectBlackjackAchievement(id) {
+        if (id && !unlockedBlackjackAchievements.has(id)) return;
+        selectedBlackjackAchievement = id;
+        localStorage.setItem('blackjack-selected-achievement', id);
+        renderBlackjackAchievementDisplayButtons();
+        const room = blackjackOnlineRoom;
+        if (!room) return;
+        const player = room.public?.players?.[room.uid];
+        if (player) {
+            player.achievement = id || null;
+            renderBlackjackOnlineRoom(room);
+        }
+        room.publicRef.child(`players/${room.uid}/achievement`).set(id || null).catch(error => {
+            console.error('ブラックジャックの実績表示を同期できませんでした。', error);
+            setBlackjackOnlineStatus(pokerFirebaseErrorMessage(error, '実績表示の同期'));
+        });
+    }
+
     function unlockQualifiedBlackjackAchievements() {
         blackjackAchievementDefinitions.forEach(achievement => {
             if (achievement.qualifies()) unlockBlackjackAchievement(achievement.id);
@@ -3724,6 +3828,7 @@
     }
 
     function renderBlackjackAchievements() {
+        renderBlackjackAchievementDisplayButtons();
         const unlockedCount = blackjackAchievementDefinitions
             .filter(achievement => unlockedBlackjackAchievements.has(achievement.id)).length;
         const button = document.getElementById('blackjack-achievement-open');
@@ -4133,6 +4238,7 @@
     function newBlackjackOnlinePlayer(name) {
         return {
             name,
+            achievement: selectedBlackjackAchievement || null,
             chips: 200,
             connected: true,
             hand: [],
@@ -4223,7 +4329,12 @@
                     if (!latest) return;
                     const players = { ...(latest.players || {}) };
                     if (players[user.uid]) {
-                        players[user.uid] = { ...players[user.uid], connected: true, name };
+                        players[user.uid] = {
+                            ...players[user.uid],
+                            connected: true,
+                            name,
+                            achievement: selectedBlackjackAchievement || null
+                        };
                     } else {
                         if (latest.status !== 'waiting') {
                             abortReason = 'この部屋では参加者を募集していません。';
@@ -4778,6 +4889,10 @@
             item.className = 'blackjack-online-player';
             const title = document.createElement('strong');
             title.textContent = `${player.rank ? `${player.rank}位 · ` : ''}${player.name}${uid === room.uid ? '（あなた）' : ''}`;
+            const achievementTitle = blackjackAchievementDefinitions.find(
+                achievement => achievement.id === player.achievement
+            )?.title;
+            appendPlayerAchievementBadge(title, achievementTitle);
             const details = document.createElement('p');
             const wins = Number.isSafeInteger(player.wins) && player.wins >= 0 ? player.wins : 0;
             const chips = Math.max(0, Number(player.chips) || 0);
@@ -5859,13 +5974,16 @@
         await closePokerRoomListing(room);
     }
 
-    function appendPokerAchievementBadge(parent, id) {
-        const title = pokerAchievementTitle(id);
+    function appendPlayerAchievementBadge(parent, title) {
         if (!title) return;
         const badge = document.createElement('span');
         badge.className = 'poker-achievement-badge';
         badge.textContent = title;
         parent.append(badge);
+    }
+
+    function appendPokerAchievementBadge(parent, id) {
+        appendPlayerAchievementBadge(parent, pokerAchievementTitle(id));
     }
 
     function renderPokerRoom(room) {
