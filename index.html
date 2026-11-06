@@ -4711,12 +4711,37 @@
             return;
         }
         try {
+            const snapshot = await room.publicRef.once('value');
+            const previouslyRead = snapshot.val();
+            if (!previouslyRead) throw new Error('部屋が見つかりません。部屋を作り直してください。');
+            let abortReason = '';
+            let transactionAttempts = 0;
             const result = await room.publicRef.transaction(current => {
-                if (!current || current.status !== 'waiting') return;
-                const players = { ...current.players };
-                const order = (current.playerOrder || []).filter(uid =>
+                transactionAttempts++;
+                const latest = current || (transactionAttempts === 1 ? previouslyRead : null);
+                if (!latest) {
+                    abortReason = '部屋が終了したため、開始できませんでした。';
+                    return;
+                }
+                if (latest.status !== 'waiting') {
+                    abortReason = 'この部屋ではすでにトーナメントが開始されています。';
+                    return;
+                }
+                if (!latest.players?.[room.uid] || latest.hostUid !== room.uid) {
+                    abortReason = 'ホスト情報を確認できません。部屋を作り直してください。';
+                    return;
+                }
+                const players = { ...latest.players };
+                const order = (latest.playerOrder || []).filter(uid =>
                     players[uid]?.connected !== false);
-                if (order.length < 1 || order.length > 9) return;
+                if (order.length < 1) {
+                    abortReason = '接続中のプレイヤーがいないため、トーナメントを開始できません。';
+                    return;
+                }
+                if (order.length > 9) {
+                    abortReason = '参加人数が上限の9人を超えています。';
+                    return;
+                }
                 Object.keys(players).forEach(uid => {
                     if (!order.includes(uid)) delete players[uid];
                 });
@@ -4725,7 +4750,7 @@
                         state: 'waiting', result: '', rank: null, eliminated: false };
                 });
                 return {
-                    ...current,
+                    ...latest,
                     status: 'playing',
                     startingChips,
                     players,
@@ -4734,7 +4759,9 @@
                     game: { phase: 'betting', round: 1, dealerHand: [], deck: [], message: '賭け額を選んで参加してください。' }
                 };
             }, undefined, false);
-            if (!result.committed) throw new Error('トーナメントを開始できませんでした。部屋の状態を確認してください。');
+            if (!result.committed) {
+                throw new Error(abortReason || 'トーナメントを開始できませんでした。時間をおいて再度お試しください。');
+            }
             room.public = result.snapshot.val();
             renderBlackjackOnlineRoom(room);
             closeBlackjackRoomListing(room);
