@@ -411,8 +411,10 @@
             padding-left: 24px;
         }
         .shared-hidden-achievement-entry {
-            display: flex;
-            gap: 8px;
+            display: block;
+        }
+        .shared-hidden-achievement-entry p {
+            margin: 4px 0 0;
         }
         .shared-hidden-achievement-form {
             display: flex;
@@ -1093,6 +1095,8 @@
 <dialog id="shared-hidden-achievement-dialog" class="shared-hidden-achievement-dialog"
     aria-labelledby="shared-hidden-achievement-title">
     <h2 id="shared-hidden-achievement-title">隠し実績</h2>
+    <button id="shared-hidden-achievement-reveal" type="button"
+        onclick="toggleSharedHiddenAchievements()" aria-expanded="false">隠し実績を表示</button>
     <ul id="shared-hidden-achievement-list" class="shared-hidden-achievement-list"></ul>
     <form class="shared-hidden-achievement-form" onsubmit="submitSharedHiddenAchievement(event)">
         <label for="shared-hidden-achievement-input">テキストボックス</label>
@@ -1622,8 +1626,12 @@
     ];
     const ranks = ['A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K'];
     const sharedHiddenAchievementDefinitions = [
-        { id: 'bad-time', title: 'BAD TIME' },
-        { id: 'made-in-heaven', title: 'メイドインヘブン' }
+        { id: 'bad-time', title: 'BAD TIME', description: 'テキストボックスに「sans the skeleton」と入力する。' },
+        {
+            id: 'made-in-heaven',
+            title: 'メイドインヘブン',
+            description: '次の言葉を順番に入力する：らせん階段、カブト虫、廃墟の街、イチジクのタルト、カブト虫、ドロローサへの道、カブト虫、特異点、ジョット、天使、紫陽花、カブト虫、特異点、秘密の皇帝。'
+        }
     ];
     const madeInHeavenSequence = [
         'らせん階段', 'カブト虫', '廃墟の街', 'イチジクのタルト', 'カブト虫',
@@ -1634,6 +1642,7 @@
         JSON.parse(localStorage.getItem('shared-hidden-achievements') || '[]')
             .filter(id => sharedHiddenAchievementDefinitions.some(achievement => achievement.id === id))
     );
+    let sharedHiddenAchievementsRevealed = false;
     let madeInHeavenProgress = Number(localStorage.getItem('made-in-heaven-progress') || 0);
     if (!Number.isInteger(madeInHeavenProgress) || madeInHeavenProgress < 0 ||
         madeInHeavenProgress >= madeInHeavenSequence.length ||
@@ -1649,12 +1658,28 @@
         sharedHiddenAchievementDefinitions.forEach(achievement => {
             const item = document.createElement('li');
             item.className = 'shared-hidden-achievement-entry';
-            const title = sharedHiddenAchievements.has(achievement.id)
+            const unlocked = sharedHiddenAchievements.has(achievement.id);
+            const title = unlocked
                 ? `獲得済み: ${achievement.title}`
-                : '？？？';
-            item.textContent = title;
+                : sharedHiddenAchievementsRevealed ? achievement.title : '？？？';
+            const titleElement = document.createElement('strong');
+            titleElement.textContent = title;
+            item.append(titleElement);
+            if (sharedHiddenAchievementsRevealed) {
+                const description = document.createElement('p');
+                description.textContent = achievement.description;
+                item.append(description);
+            }
             list.append(item);
         });
+        const revealButton = document.getElementById('shared-hidden-achievement-reveal');
+        revealButton.textContent = sharedHiddenAchievementsRevealed ? '隠し実績を隠す' : '隠し実績を表示';
+        revealButton.setAttribute('aria-expanded', String(sharedHiddenAchievementsRevealed));
+    }
+
+    function toggleSharedHiddenAchievements() {
+        sharedHiddenAchievementsRevealed = !sharedHiddenAchievementsRevealed;
+        renderSharedHiddenAchievements();
     }
 
     function openSharedHiddenAchievements() {
