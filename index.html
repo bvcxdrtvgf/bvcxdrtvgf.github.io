@@ -1095,9 +1095,8 @@
 <dialog id="shared-hidden-achievement-dialog" class="shared-hidden-achievement-dialog"
     aria-labelledby="shared-hidden-achievement-title">
     <h2 id="shared-hidden-achievement-title">隠し実績</h2>
-    <button id="shared-hidden-achievement-reveal" type="button"
-        onclick="toggleSharedHiddenAchievements()" aria-expanded="false">隠し実績を表示</button>
     <ul id="shared-hidden-achievement-list" class="shared-hidden-achievement-list"></ul>
+    <p>獲得した隠し実績はオンライン対戦のプレイヤー名の横に表示できます。</p>
     <form class="shared-hidden-achievement-form" onsubmit="submitSharedHiddenAchievement(event)">
         <label for="shared-hidden-achievement-input">テキストボックス</label>
         <input id="shared-hidden-achievement-input" type="text" maxlength="64" autocomplete="off">
@@ -1626,12 +1625,8 @@
     ];
     const ranks = ['A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K'];
     const sharedHiddenAchievementDefinitions = [
-        { id: 'bad-time', title: 'BAD TIME', description: 'テキストボックスに「sans the skeleton」と入力する。' },
-        {
-            id: 'made-in-heaven',
-            title: 'メイドインヘブン',
-            description: '次の言葉を順番に入力する：らせん階段、カブト虫、廃墟の街、イチジクのタルト、カブト虫、ドロローサへの道、カブト虫、特異点、ジョット、天使、紫陽花、カブト虫、特異点、秘密の皇帝。'
-        }
+        { id: 'bad-time', title: 'BAD TIME' },
+        { id: 'made-in-heaven', title: 'メイドインヘブン' }
     ];
     const madeInHeavenSequence = [
         'らせん階段', 'カブト虫', '廃墟の街', 'イチジクのタルト', 'カブト虫',
@@ -1642,7 +1637,10 @@
         JSON.parse(localStorage.getItem('shared-hidden-achievements') || '[]')
             .filter(id => sharedHiddenAchievementDefinitions.some(achievement => achievement.id === id))
     );
-    let sharedHiddenAchievementsRevealed = false;
+    let selectedSharedHiddenAchievement = localStorage.getItem('shared-hidden-selected-achievement') || '';
+    if (!sharedHiddenAchievements.has(selectedSharedHiddenAchievement)) {
+        selectedSharedHiddenAchievement = '';
+    }
     let madeInHeavenProgress = Number(localStorage.getItem('made-in-heaven-progress') || 0);
     if (!Number.isInteger(madeInHeavenProgress) || madeInHeavenProgress < 0 ||
         madeInHeavenProgress >= madeInHeavenSequence.length ||
@@ -1658,28 +1656,82 @@
         sharedHiddenAchievementDefinitions.forEach(achievement => {
             const item = document.createElement('li');
             item.className = 'shared-hidden-achievement-entry';
-            const unlocked = sharedHiddenAchievements.has(achievement.id);
-            const title = unlocked
-                ? `獲得済み: ${achievement.title}`
-                : sharedHiddenAchievementsRevealed ? achievement.title : '？？？';
-            const titleElement = document.createElement('strong');
-            titleElement.textContent = title;
-            item.append(titleElement);
-            if (sharedHiddenAchievementsRevealed) {
-                const description = document.createElement('p');
-                description.textContent = achievement.description;
-                item.append(description);
+            if (sharedHiddenAchievements.has(achievement.id)) {
+                const titleElement = document.createElement('strong');
+                titleElement.textContent = `獲得済み: ${achievement.title}`;
+                const selectButton = document.createElement('button');
+                selectButton.type = 'button';
+                selectButton.textContent = selectedSharedHiddenAchievement === achievement.id
+                    ? '表示中' : 'プレイヤー名の横に表示';
+                selectButton.setAttribute(
+                    'aria-pressed',
+                    String(selectedSharedHiddenAchievement === achievement.id)
+                );
+                selectButton.addEventListener('click', () =>
+                    selectSharedHiddenAchievement(
+                        selectedSharedHiddenAchievement === achievement.id ? '' : achievement.id
+                    )
+                );
+                item.append(titleElement, selectButton);
+            } else {
+                item.textContent = '？？？';
             }
             list.append(item);
         });
-        const revealButton = document.getElementById('shared-hidden-achievement-reveal');
-        revealButton.textContent = sharedHiddenAchievementsRevealed ? '隠し実績を隠す' : '隠し実績を表示';
-        revealButton.setAttribute('aria-expanded', String(sharedHiddenAchievementsRevealed));
     }
 
-    function toggleSharedHiddenAchievements() {
-        sharedHiddenAchievementsRevealed = !sharedHiddenAchievementsRevealed;
+    function sharedHiddenAchievementTitle(id) {
+        return sharedHiddenAchievementDefinitions.find(achievement => achievement.id === id)?.title || '';
+    }
+
+    function appendSharedHiddenAchievementBadge(parent, id) {
+        appendPlayerAchievementBadge(parent, sharedHiddenAchievementTitle(id));
+    }
+
+    async function selectSharedHiddenAchievement(id) {
+        if (id && !sharedHiddenAchievements.has(id)) return;
+        selectedSharedHiddenAchievement = id;
+        localStorage.setItem('shared-hidden-selected-achievement', id);
         renderSharedHiddenAchievements();
+        if (onlineMatch) {
+            try {
+                const match = onlineMatch;
+                const result = await match.roomRef.transaction(room => {
+                    const player = room?.[match.role];
+                    if (!player || player.uid !== match.uid) return;
+                    room[match.role] = { ...player, hiddenAchievement: id || null };
+                    return room;
+                });
+                if (!result.committed) throw new Error('プレイヤー情報を更新できませんでした。');
+                renderOnlineMatchPlayers(result.snapshot.val());
+            } catch (error) {
+                console.error('ソリティアの隠し実績表示を同期できませんでした。', error);
+                document.getElementById('online-match-status').textContent =
+                    `隠し実績表示の同期に失敗しました: ${error.message}`;
+            }
+        }
+        if (onlinePokerRoom) {
+            const room = onlinePokerRoom;
+            if (room.public?.players?.[room.uid]) {
+                room.public.players[room.uid].hiddenAchievement = id || null;
+                renderPokerRoom(room);
+            }
+            room.publicRef.child(`players/${room.uid}/hiddenAchievement`).set(id || null).catch(error => {
+                console.error('ポーカーの隠し実績表示を同期できませんでした。', error);
+                setPokerStatus('隠し実績表示の同期に失敗しました。');
+            });
+        }
+        if (blackjackOnlineRoom) {
+            const room = blackjackOnlineRoom;
+            if (room.public?.players?.[room.uid]) {
+                room.public.players[room.uid].hiddenAchievement = id || null;
+                renderBlackjackOnlineRoom(room);
+            }
+            room.publicRef.child(`players/${room.uid}/hiddenAchievement`).set(id || null).catch(error => {
+                console.error('ブラックジャックの隠し実績表示を同期できませんでした。', error);
+                setBlackjackOnlineStatus(pokerFirebaseErrorMessage(error, '隠し実績表示の同期'));
+            });
+        }
     }
 
     function openSharedHiddenAchievements() {
@@ -2986,6 +3038,7 @@
                 achievement => achievement.id === player.achievement
             )?.title;
             appendPlayerAchievementBadge(name, achievementTitle);
+            appendSharedHiddenAchievementBadge(name, player.hiddenAchievement);
             const record = document.createElement('span');
             const victories = Number.isFinite(Number(player.victoryCount)) ? Number(player.victoryCount) : 0;
             const clears = Number.isFinite(Number(player.totalWins)) ? Number(player.totalWins) : 0;
@@ -3046,7 +3099,8 @@
                         difficulty: document.getElementById('difficulty').value,
                         host: {
                             uid: user.uid, name, victoryCount, totalWins,
-                            achievement: selectedSolitaireAchievement || null
+                            achievement: selectedSolitaireAchievement || null,
+                            hiddenAchievement: selectedSharedHiddenAchievement || null
                         },
                         guest: null,
                         winner: null,
@@ -3109,7 +3163,8 @@
                 if (!room || room.status !== 'waiting' || room.guest || room.host.uid === user.uid) return;
                 room.guest = {
                     uid: user.uid, name, victoryCount, totalWins,
-                    achievement: selectedSolitaireAchievement || null
+                    achievement: selectedSolitaireAchievement || null,
+                    hiddenAchievement: selectedSharedHiddenAchievement || null
                 };
                 room.status = 'playing';
                 return room;
@@ -4396,6 +4451,7 @@
         return {
             name,
             achievement: selectedBlackjackAchievement || null,
+            hiddenAchievement: selectedSharedHiddenAchievement || null,
             chips: 200,
             connected: true,
             hand: [],
@@ -4490,7 +4546,8 @@
                             ...players[user.uid],
                             connected: true,
                             name,
-                            achievement: selectedBlackjackAchievement || null
+                            achievement: selectedBlackjackAchievement || null,
+                            hiddenAchievement: selectedSharedHiddenAchievement || null
                         };
                     } else {
                         if (latest.status !== 'waiting') {
@@ -5050,6 +5107,7 @@
                 achievement => achievement.id === player.achievement
             )?.title;
             appendPlayerAchievementBadge(title, achievementTitle);
+            appendSharedHiddenAchievementBadge(title, player.hiddenAchievement);
             const details = document.createElement('p');
             const wins = Number.isSafeInteger(player.wins) && player.wins >= 0 ? player.wins : 0;
             const chips = Math.max(0, Number(player.chips) || 0);
@@ -5192,7 +5250,16 @@
         awardPokerAchievement('welcome');
         const selectedAchievement = loadPokerAchievementProfile().selected;
         const players = {
-            [humanUid]: { name, chips: 200, wins: pokerAdminDisplayWins, achievement: selectedAchievement, connected: true, bet: 0, contribution: 0 },
+            [humanUid]: {
+                name,
+                chips: 200,
+                wins: pokerAdminDisplayWins,
+                achievement: selectedAchievement,
+                hiddenAchievement: selectedSharedHiddenAchievement || null,
+                connected: true,
+                bet: 0,
+                contribution: 0
+            },
             [cpuUid]: { name: `CPU（${{ easy: '簡単', normal: '普通', hard: '難しい', new: 'ナイトメア' }[difficulty]}）`, chips: 200, wins: 0, connected: true, bet: 0, contribution: 0 }
         };
         const playerOrder = [humanUid, cpuUid];
@@ -5693,12 +5760,22 @@
             const roomRef = onlineFirebaseDatabase.ref(`pokerRooms/${roomId}`);
             const publicRef = roomRef.child('public');
             const directoryRef = onlineFirebaseDatabase.ref(`pokerRoomDirectory/${roomId}`);
+            const selectedHiddenAchievement = selectedSharedHiddenAchievement || null;
             const room = {
                 status: 'waiting',
                 hostUid: user.uid,
                 hostName: name,
                 createdAt: firebase.database.ServerValue.TIMESTAMP,
-                players: { [user.uid]: { name, chips: 200, wins: 0, achievement: loadPokerAchievementProfile().selected, connected: true, bet: 0, contribution: 0 } },
+                players: { [user.uid]: {
+                    name,
+                    chips: 200,
+                    wins: 0,
+                    achievement: loadPokerAchievementProfile().selected,
+                    hiddenAchievement: selectedHiddenAchievement,
+                    connected: true,
+                    bet: 0,
+                    contribution: 0
+                } },
                 playerOrder: [user.uid],
                 game: null
             };
@@ -5774,7 +5851,8 @@
                             ...players[user.uid],
                             connected: true,
                             name,
-                            achievement: loadPokerAchievementProfile().selected
+                            achievement: loadPokerAchievementProfile().selected,
+                            hiddenAchievement: selectedSharedHiddenAchievement || null
                         };
                         updated.players = players;
                         return updated;
@@ -5792,6 +5870,7 @@
                         chips: 200,
                         wins: 0,
                         achievement: loadPokerAchievementProfile().selected,
+                        hiddenAchievement: selectedSharedHiddenAchievement || null,
                         connected: true,
                         bet: 0,
                         contribution: 0
@@ -6166,6 +6245,7 @@
             const name = document.createElement('strong');
             name.textContent = `${player.name}${uid === room.uid ? '（あなた）' : ''}${uid === game?.dealerUid ? ' · D' : ''}`;
             appendPokerAchievementBadge(name, player.achievement);
+            appendSharedHiddenAchievementBadge(name, player.hiddenAchievement);
             const detail = document.createElement('div');
             detail.textContent = `${player.chips} チップ · ベット ${player.bet || 0} · 勝利 ${player.wins || 0}${player.allIn ? ' · オールイン' : ''}${player.connected === false ? ' · 退出' : ''}`;
             element.append(name, detail);
@@ -6176,6 +6256,7 @@
                     `${player.name}: ${player.wins || 0}勝${player.connected === false ? '（退出）' : ''}`
                 ));
                 appendPokerAchievementBadge(rosterItem, player.achievement);
+                appendSharedHiddenAchievementBadge(rosterItem, player.hiddenAchievement);
                 rosterList.append(rosterItem);
             }
         });
