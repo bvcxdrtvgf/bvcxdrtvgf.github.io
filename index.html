@@ -387,6 +387,75 @@
         .blackjack-screen[hidden] {
             display: none;
         }
+        .daifugo-screen {
+            position: relative;
+            z-index: 1;
+            max-width: 960px;
+            margin: 24px auto;
+            padding: 20px;
+            border: 2px solid rgba(255,255,255,0.7);
+            border-radius: 8px;
+            background: rgba(0,0,0,0.12);
+            text-align: center;
+        }
+        .daifugo-screen[hidden] {
+            display: none;
+        }
+        .daifugo-lobby,
+        .daifugo-controls,
+        .daifugo-hand {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 8px;
+            flex-wrap: wrap;
+            margin: 16px 0;
+        }
+        .daifugo-lobby input {
+            width: min(220px, 100%);
+        }
+        .daifugo-players {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 8px;
+            margin: 16px 0;
+            padding: 0;
+            list-style: none;
+        }
+        .daifugo-player {
+            padding: 10px;
+            border: 1px solid rgba(255,255,255,0.45);
+            border-radius: 6px;
+            background: rgba(0,0,0,0.2);
+        }
+        .daifugo-player.current {
+            outline: 2px solid #ffeb3b;
+        }
+        .daifugo-play-area {
+            min-height: 120px;
+            margin: 16px 0;
+            padding: 16px;
+            border-radius: 8px;
+            background: rgba(0,0,0,0.22);
+        }
+        .daifugo-card {
+            min-width: 44px;
+            min-height: 64px;
+            padding: 6px;
+            border: 2px solid #ddd;
+            border-radius: 6px;
+            background: #fff;
+            color: #17202a;
+            font-weight: bold;
+            font-size: 16px;
+        }
+        .daifugo-card.red {
+            color: #c62828;
+        }
+        .daifugo-card.selected {
+            transform: translateY(-10px);
+            border-color: #ffeb3b;
+        }
         .shared-hidden-achievement-button {
             position: fixed;
             bottom: 12px;
@@ -1086,8 +1155,47 @@
                 ブラックジャック
                 <span>ディーラーと対戦</span>
             </button>
+            <button class="game-option" type="button" onclick="startDaifugo()">
+                大富豪
+                <span>CPU戦 / 4人オンライン対戦</span>
+            </button>
         </div>
     </div>
+</main>
+
+<main id="daifugo-screen" class="daifugo-screen" aria-labelledby="daifugo-title" hidden>
+    <h1 id="daifugo-title">大富豪</h1>
+    <p>4人で遊ぶトランプゲームです。3♦から始まり、同じ枚数のより強い札を出すかパスします。</p>
+    <section id="daifugo-lobby" aria-label="大富豪の対戦設定">
+        <div class="daifugo-lobby">
+            <label for="daifugo-player-name">名前</label>
+            <input id="daifugo-player-name" type="text" maxlength="16" autocomplete="nickname" placeholder="プレイヤー名">
+            <button id="daifugo-create-room" type="button" onclick="createDaifugoRoom()">オンライン部屋を作る</button>
+            <label for="daifugo-room-code">部屋コード</label>
+            <input id="daifugo-room-code" type="text" inputmode="numeric" maxlength="6" placeholder="6桁コード">
+            <button id="daifugo-join-room" type="button" onclick="joinDaifugoRoom()">部屋に参加</button>
+            <button id="daifugo-cpu-start" type="button" onclick="startDaifugoCpuGame()">CPUと対戦</button>
+        </div>
+        <p>オンラインは4人で開始します。ホストが部屋コードを共有してください。</p>
+    </section>
+    <section id="daifugo-room" hidden aria-label="大富豪の対戦">
+        <p id="daifugo-room-code-display"></p>
+        <ul id="daifugo-players" class="daifugo-players" aria-label="プレイヤー一覧"></ul>
+        <button id="daifugo-start-game" type="button" onclick="startDaifugoOnlineGame()" hidden>ゲーム開始</button>
+        <div class="daifugo-play-area">
+            <p id="daifugo-trick-info"></p>
+            <div id="daifugo-table-cards" class="daifugo-hand" aria-label="場のカード"></div>
+        </div>
+        <p id="daifugo-status" aria-live="polite"></p>
+        <div id="daifugo-own-hand" class="daifugo-hand" aria-label="自分の手札"></div>
+        <div class="daifugo-controls">
+            <button id="daifugo-play" type="button" onclick="playDaifugoCards()">カードを出す</button>
+            <button id="daifugo-pass" type="button" onclick="passDaifugoTurn()">パス</button>
+            <button type="button" onclick="leaveDaifugoGame()">退出</button>
+        </div>
+    </section>
+    <p id="daifugo-message" role="status" aria-live="polite"></p>
+    <button type="button" onclick="closeDaifugo()">ゲーム選択に戻る</button>
 </main>
 
 <button id="shared-hidden-achievement-button" class="shared-hidden-achievement-button" type="button"
@@ -6959,6 +7067,7 @@
 
     setGameContentInert(true);
 </script>
+<script src="daifugo.js"></script>
 
 </body>
 </html>

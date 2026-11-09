@@ -44,6 +44,20 @@
             ".write": "auth != null && ((!data.exists() && newData.child('hostUid').val() === auth.uid && newData.child('status').val() === 'waiting') || data.child('players').child(auth.uid).exists() || (data.child('status').val() === 'waiting' && !data.child('players').child(auth.uid).exists() && newData.child('players').child(auth.uid).exists() && newData.child('hostUid').val() === data.child('hostUid').val()))"
           }
         }
+      },
+      "daifugoRooms": {
+        "$roomId": {
+          "public": {
+            ".read": "auth != null",
+            ".write": "auth != null && ((!data.exists() && newData.child('hostUid').val() === auth.uid && newData.child('status').val() === 'waiting') || data.child('hostUid').val() === auth.uid || data.child('players').child(auth.uid).exists() || (data.child('status').val() === 'waiting' && !data.child('players').child(auth.uid).exists() && newData.child('players').child(auth.uid).exists() && newData.child('hostUid').val() === data.child('hostUid').val()))"
+          },
+          "private": {
+            "$uid": {
+              ".read": "auth != null && auth.uid === $uid",
+              ".write": "auth != null && (auth.uid === $uid || auth.uid === root.child('daifugoRooms').child($roomId).child('public/hostUid').val())"
+            }
+          }
+        }
       }
   }
 }
