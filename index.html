@@ -1903,6 +1903,9 @@
         return sharedHiddenAchievementDefinitions.find(achievement => achievement.id === id)?.title || '';
     }
 
+    window.getSelectedSharedHiddenAchievement = () => selectedSharedHiddenAchievement;
+    window.getSharedHiddenAchievementTitle = sharedHiddenAchievementTitle;
+
     function appendSharedHiddenAchievementBadge(parent, id) {
         appendPlayerAchievementBadge(parent, sharedHiddenAchievementTitle(id));
     }
@@ -1951,6 +1954,7 @@
                 setBlackjackOnlineStatus(pokerFirebaseErrorMessage(error, '隠し実績表示の同期'));
             });
         }
+        window.syncDaifugoHiddenAchievement?.(id);
     }
 
     function openSharedHiddenAchievements() {

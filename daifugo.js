@@ -120,6 +120,17 @@
         });
     }
 
+    function syncHiddenAchievement(id) {
+        const room = state.room;
+        if (state.mode !== 'online' || !room?.public?.players?.[state.uid]) return;
+        room.public.players[state.uid].hiddenAchievement = id || null;
+        render(room.public, state.uid, room.code);
+        room.publicRef.child(`players/${state.uid}/hiddenAchievement`).set(id || null).catch(error => {
+            console.error('大富豪の隠し実績表示を同期できませんでした。', error);
+            setMessage(`隠し実績表示の同期に失敗しました: ${error.message}`);
+        });
+    }
+
     function openAchievements() {
         renderAchievements();
         element('achievement-dialog').showModal();
@@ -541,6 +552,13 @@
             const connection = player.connected === false ? ' · 切断中' : '';
             const identity = document.createElement('span');
             identity.textContent = `${index + 1}. ${player.name}${playerUid === uid ? '（あなた）' : ''}`;
+            const hiddenAchievementTitle = window.getSharedHiddenAchievementTitle?.(player.hiddenAchievement);
+            if (hiddenAchievementTitle) {
+                const hiddenBadge = document.createElement('span');
+                hiddenBadge.className = 'poker-achievement-badge';
+                hiddenBadge.textContent = hiddenAchievementTitle;
+                identity.append(hiddenBadge);
+            }
             item.append(identity);
             const stats = document.createElement('div');
             stats.textContent = `勝利数: ${Number.isSafeInteger(player.wins) && player.wins >= 0 ? player.wins : 0}${rank}${count}${connection}`;
@@ -826,6 +844,7 @@
             const name = playerName();
             const wins = currentVictoryCount();
             const achievement = selectedAchievement();
+            const hiddenAchievement = window.getSelectedSharedHiddenAchievement?.() || '';
             const database = getDatabase();
             let code = '';
             let roomRef;
@@ -839,7 +858,7 @@
                     hostUid: user.uid,
                     hostName: name,
                     players: {
-                        [user.uid]: { uid: user.uid, name, wins, achievement: achievement || null, connected: true, handCount: 0, rank: null }
+                        [user.uid]: { uid: user.uid, name, wins, achievement: achievement || null, hiddenAchievement: hiddenAchievement || null, connected: true, handCount: 0, rank: null }
                     },
                     playerOrder: [user.uid],
                     previousChampionUid: null,
@@ -893,6 +912,7 @@
             const name = playerName();
             const wins = currentVictoryCount();
             const achievement = selectedAchievement();
+            const hiddenAchievement = window.getSelectedSharedHiddenAchievement?.() || '';
             const roomRef = getDatabase().ref(`daifugoRooms/${code}`);
             const publicRef = roomRef.child('public');
             const snapshot = await publicRef.once('value');
@@ -926,6 +946,7 @@
                     name,
                     wins,
                     achievement: achievement || null,
+                    hiddenAchievement: hiddenAchievement || null,
                     connected: true,
                     handCount: 0,
                     rank: null
@@ -1238,6 +1259,7 @@
     }
 
     window.startDaifugo = startDaifugo;
+    window.syncDaifugoHiddenAchievement = syncHiddenAchievement;
     window.openDaifugoAchievements = openAchievements;
     window.getDaifugoAdminAchievements = () => achievements;
     window.isDaifugoAchievementUnlocked = id => unlockedAchievements().includes(id);
