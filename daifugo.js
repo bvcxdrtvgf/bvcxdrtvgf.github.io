@@ -73,12 +73,50 @@
         const unlocked = unlockedAchievements();
         element('achievement-open').textContent = `実績 ${unlocked.length}/${achievements.length}`;
         element('win-count').textContent = String(currentVictoryCount());
+        renderAchievementDisplayButtons();
         const list = element('achievement-list');
         list.replaceChildren();
         achievements.forEach(achievement => {
             const item = document.createElement('li');
             item.textContent = `${achievement.title} — ${unlocked.includes(achievement.id) ? '獲得済み' : '未獲得'}：${achievement.description}`;
             list.append(item);
+        });
+    }
+
+    function selectedAchievement() {
+        const id = localStorage.getItem('daifugo-selected-achievement') || '';
+        return unlockedAchievements().includes(id) ? id : '';
+    }
+
+    function renderAchievementDisplayButtons() {
+        const container = element('achievement-display-buttons');
+        container.replaceChildren();
+        const unlocked = unlockedAchievements();
+        [{ id: '', title: '表示しない' }, ...achievements].forEach(achievement => {
+            const button = document.createElement('button');
+            button.type = 'button';
+            const isUnlocked = !achievement.id || unlocked.includes(achievement.id);
+            button.textContent = achievement.id
+                ? `${isUnlocked ? '✓' : '🔒'} ${achievement.title}`
+                : achievement.title;
+            button.disabled = !isUnlocked;
+            button.setAttribute('aria-pressed', String(selectedAchievement() === achievement.id));
+            button.addEventListener('click', () => selectAchievement(achievement.id));
+            container.append(button);
+        });
+    }
+
+    function selectAchievement(id) {
+        if (id && !unlockedAchievements().includes(id)) return;
+        localStorage.setItem('daifugo-selected-achievement', id);
+        renderAchievementDisplayButtons();
+        const room = state.room;
+        if (state.mode !== 'online' || !room?.public?.players?.[state.uid]) return;
+        room.public.players[state.uid].achievement = id || null;
+        render(room.public, state.uid, room.code);
+        room.publicRef.child(`players/${state.uid}/achievement`).set(id || null).catch(error => {
+            console.error('大富豪の実績表示を同期できませんでした。', error);
+            setMessage(`実績表示の同期に失敗しました: ${error.message}`);
         });
     }
 
@@ -501,7 +539,19 @@
             const count = room.status === 'playing'
                 ? ` · 手札 ${player.handCount ?? player.hand?.length ?? 0}枚` : '';
             const connection = player.connected === false ? ' · 切断中' : '';
-            item.textContent = `${index + 1}. ${player.name}${playerUid === uid ? '（あなた）' : ''}${rank}${count}${connection}`;
+            const identity = document.createElement('span');
+            identity.textContent = `${index + 1}. ${player.name}${playerUid === uid ? '（あなた）' : ''}`;
+            item.append(identity);
+            const stats = document.createElement('div');
+            stats.textContent = `勝利数: ${Number.isSafeInteger(player.wins) && player.wins >= 0 ? player.wins : 0}${rank}${count}${connection}`;
+            item.append(stats);
+            const achievement = achievements.find(entry => entry.id === player.achievement);
+            if (achievement) {
+                const badge = document.createElement('span');
+                badge.className = 'poker-achievement-badge';
+                badge.textContent = achievement.title;
+                item.append(badge);
+            }
             playersList.append(item);
         });
         const startButton = element('start-game');
@@ -608,6 +658,14 @@
         if (room?.status === 'finished' && room.players?.[state.uid]?.rank === 1
             && window.recordCardGameVictory?.('daifugo', room.game?.gameId)) {
             awardWinMilestones();
+            room.players[state.uid].wins = currentVictoryCount();
+            render(room, state.uid, state.mode === 'online' ? state.room.code : '');
+            if (state.mode === 'online') {
+                state.room.publicRef.child(`players/${state.uid}/wins`).set(currentVictoryCount()).catch(error => {
+                    console.error('大富豪の勝利数を同期できませんでした。', error);
+                    setMessage(`勝利数の同期に失敗しました: ${error.message}`);
+                });
+            }
             window.playCardGameSound?.('win');
             window.playCardGameVictoryAnimation?.();
         }
@@ -630,6 +688,7 @@
         document.getElementById('daifugo-screen').hidden = false;
         window.setGameContentInert?.(false);
         element('player-name').value = localStorage.getItem('daifugo-player-name') || '';
+        renderAchievements();
     }
 
     function startDaifugo() {
@@ -765,6 +824,8 @@
         try {
             const user = await getUser();
             const name = playerName();
+            const wins = currentVictoryCount();
+            const achievement = selectedAchievement();
             const database = getDatabase();
             let code = '';
             let roomRef;
@@ -778,7 +839,7 @@
                     hostUid: user.uid,
                     hostName: name,
                     players: {
-                        [user.uid]: { uid: user.uid, name, connected: true, handCount: 0, rank: null }
+                        [user.uid]: { uid: user.uid, name, wins, achievement: achievement || null, connected: true, handCount: 0, rank: null }
                     },
                     playerOrder: [user.uid],
                     previousChampionUid: null,
@@ -830,6 +891,8 @@
         try {
             const user = await getUser();
             const name = playerName();
+            const wins = currentVictoryCount();
+            const achievement = selectedAchievement();
             const roomRef = getDatabase().ref(`daifugoRooms/${code}`);
             const publicRef = roomRef.child('public');
             const snapshot = await publicRef.once('value');
@@ -861,6 +924,8 @@
                     ...(latest.players?.[user.uid] || {}),
                     uid: user.uid,
                     name,
+                    wins,
+                    achievement: achievement || null,
                     connected: true,
                     handCount: 0,
                     rank: null
