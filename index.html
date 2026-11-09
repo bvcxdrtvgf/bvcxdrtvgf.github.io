@@ -1383,7 +1383,10 @@
             </select>
             <label for="poker-admin-total-wins">実績用の累計勝利数</label>
             <input id="poker-admin-total-wins" class="bet-input" type="number" min="0" step="1">
-            <button type="button" onclick="setPokerAdminTotalWins()">勝利数を変更</button>
+            <button type="button" onclick="setPokerAdminTotalWins()">実績用の累計勝利数を変更</button>
+            <label for="poker-admin-game-wins">画面表示・ランキング用の累計勝利数</label>
+            <input id="poker-admin-game-wins" class="bet-input" type="number" min="0" step="1">
+            <button type="button" onclick="setPokerAdminGameWins()">画面表示の勝利数を変更</button>
             <label for="poker-admin-display-wins">CPU戦の表示勝利数</label>
             <input id="poker-admin-display-wins" class="bet-input" type="number" min="0" step="1">
             <button type="button" onclick="setPokerAdminDisplayWins()">表示勝利数を変更</button>
@@ -6173,6 +6176,10 @@
         document.getElementById('poker-admin-settings').hidden = false;
         document.getElementById('poker-admin-total-wins').value =
             loadPokerAchievementProfile().totalWins;
+        const sharedVictoryCounts = JSON.parse(localStorage.getItem('shared-game-victory-counts-v1') || '{}');
+        document.getElementById('poker-admin-game-wins').value =
+            Number.isSafeInteger(sharedVictoryCounts.poker) && sharedVictoryCounts.poker >= 0
+                ? sharedVictoryCounts.poker : 0;
         document.getElementById('poker-admin-display-wins').value = pokerAdminDisplayWins;
         document.getElementById('poker-admin-wins-fixed').checked = pokerAdminWinsFixed;
         document.getElementById('poker-admin-toggle').textContent = 'CPU戦管理者モード: ON';
@@ -6200,6 +6207,26 @@
         if (totalWins >= 1000) awardPokerAchievement('thousand-wins');
         renderPokerAchievements();
         setPokerStatus(`実績用の累計勝利数を${totalWins}に変更しました。`);
+    }
+
+    function setPokerAdminGameWins() {
+        if (!pokerAdminModeEnabled) {
+            setPokerStatus('管理者認証後に操作してください。');
+            return;
+        }
+        const input = document.getElementById('poker-admin-game-wins');
+        const wins = Number(input.value);
+        if (!input.value.trim() || !Number.isSafeInteger(wins) || wins < 0) {
+            setPokerStatus('画面表示の勝利数は0以上の整数で入力してください。');
+            return;
+        }
+        try {
+            window.setSharedGameVictoryCount('poker', wins);
+        } catch (error) {
+            setPokerStatus(error.message || '画面表示の勝利数を変更できませんでした。');
+            return;
+        }
+        setPokerStatus(`画面表示の累計勝利数を${wins}に変更しました。`);
     }
 
     function setPokerAdminDisplayWins() {
