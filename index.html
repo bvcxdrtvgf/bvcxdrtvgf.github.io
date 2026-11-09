@@ -1215,6 +1215,21 @@
     <p><strong>勝利数: <span id="daifugo-win-count">0</span></strong></p>
     <button class="game-audio-toggle" type="button" onclick="toggleSound()">効果音: ON</button>
     <button id="daifugo-achievement-open" type="button" onclick="openDaifugoAchievements()">実績 0/10</button>
+    <section class="poker-admin" aria-label="大富豪管理者設定">
+        <button id="daifugo-admin-toggle" class="shop-toggle-button" type="button" onclick="toggleDaifugoAdminPanel()">管理者モード</button>
+        <div id="daifugo-admin-login" class="poker-lobby" hidden>
+            <label for="daifugo-admin-code">管理コード</label>
+            <input id="daifugo-admin-code" type="password" maxlength="32" autocomplete="off">
+            <button type="button" onclick="unlockDaifugoAdminMode()">認証</button>
+        </div>
+        <div id="daifugo-admin-settings" class="poker-lobby" hidden>
+            <label for="daifugo-admin-wins">勝利数</label>
+            <input id="daifugo-admin-wins" type="number" min="0" step="1">
+            <button type="button" onclick="setDaifugoAdminWins()">勝利数を変更</button>
+            <button type="button" onclick="openAdminAchievementDialog('daifugo')">実績を獲得</button>
+            <button type="button" onclick="disableDaifugoAdminMode()">管理者モードを終了</button>
+        </div>
+    </section>
     <p>CPU戦または2〜4人オンラインで遊べます。3♦から始まり、同じ種類・枚数のより強い役か階段を出すかパスします。</p>
     <section id="daifugo-lobby" aria-label="大富豪の対戦設定">
         <div class="daifugo-lobby">
@@ -1274,6 +1289,17 @@
         </form>
     </dialog>
 </main>
+
+<dialog id="admin-achievement-dialog" class="achievement-dialog" aria-labelledby="admin-achievement-title">
+    <h2 id="admin-achievement-title">管理者による実績獲得</h2>
+    <label for="admin-achievement-game">ゲーム</label>
+    <select id="admin-achievement-game" class="difficulty-select" onchange="renderAdminAchievementOptions()"></select>
+    <label for="admin-achievement-choice">実績</label>
+    <select id="admin-achievement-choice" class="difficulty-select" onchange="updateAdminAchievementButton()"></select>
+    <button id="admin-achievement-grant" type="button" onclick="grantAdminAchievement()">実績を獲得</button>
+    <p id="admin-achievement-status" aria-live="polite"></p>
+    <form method="dialog"><button type="submit">閉じる</button></form>
+</dialog>
 
 <button id="shared-hidden-achievement-button" class="shared-hidden-achievement-button" type="button"
     onclick="openSharedHiddenAchievements()" aria-label="隠し実績">？？？</button>
@@ -1361,6 +1387,7 @@
             <button type="button" onclick="setPokerAdminDisplayWins()">表示勝利数を変更</button>
             <label for="poker-admin-wins-fixed">勝利数を固定</label>
             <input id="poker-admin-wins-fixed" type="checkbox" onchange="setPokerAdminWinsFixed(this.checked)">
+            <button type="button" onclick="openAdminAchievementDialog('poker')">実績を獲得</button>
             <button type="button" onclick="disablePokerAdminMode()">管理者モードを終了</button>
         </div>
     </section>
@@ -1457,6 +1484,7 @@
             <input id="blackjack-admin-online-chips-fixed" type="checkbox">
             <button type="button" onclick="saveBlackjackAdminSettings()">変更を保存</button>
             <button type="button" onclick="disableBlackjackAdminMode()">管理者モードを終了</button>
+            <button type="button" onclick="openAdminAchievementDialog('blackjack')">実績を獲得</button>
         </div>
     </section>
     <button id="blackjack-online-open" type="button" onclick="openBlackjackOnline()">オンライン対戦</button>
@@ -1763,6 +1791,7 @@
         </select>
         <button type="button" onclick="resetAdminCounters()">勝利数・クリア数をリセット</button>
         <button type="button" onclick="restoreCheckpoint()">チェックポイントを復元</button>
+        <button type="button" onclick="openAdminAchievementDialog('solitaire')">実績を獲得</button>
         <button type="button" onclick="lockAdminMode()">管理モードを終了</button>
     </div>
 </section>
@@ -1929,10 +1958,11 @@
     }
 
     function unlockSharedHiddenAchievement(id) {
-        if (sharedHiddenAchievements.has(id)) return;
+        if (sharedHiddenAchievements.has(id)) return false;
         sharedHiddenAchievements.add(id);
         localStorage.setItem('shared-hidden-achievements', JSON.stringify([...sharedHiddenAchievements]));
         renderSharedHiddenAchievements();
+        return true;
     }
 
     function submitSharedHiddenAchievement(event) {
@@ -2342,6 +2372,148 @@
         document.getElementById('achievement-dialog').showModal();
     }
 
+    const adminAchievementGames = [
+        {
+            id: 'solitaire',
+            title: 'ソリティア',
+            achievements: () => achievementDefinitions,
+            isUnlocked: id => unlockedAchievements.has(id),
+            grant: id => {
+                if (unlockedAchievements.has(id)) return false;
+                unlockedAchievements.add(id);
+                saveAchievements();
+                renderAchievements();
+                return true;
+            }
+        },
+        {
+            id: 'poker',
+            title: 'ポーカー',
+            achievements: () => pokerAchievements,
+            isUnlocked: id => loadPokerAchievementProfile().unlocked.includes(id),
+            grant: id => {
+                const profile = loadPokerAchievementProfile();
+                if (profile.unlocked.includes(id)) return false;
+                awardPokerAchievement(id);
+                return true;
+            }
+        },
+        {
+            id: 'blackjack',
+            title: 'ブラックジャック',
+            achievements: () => blackjackAchievementDefinitions,
+            isUnlocked: id => unlockedBlackjackAchievements.has(id),
+            grant: id => {
+                if (unlockedBlackjackAchievements.has(id)) return false;
+                unlockBlackjackAchievement(id);
+                return true;
+            }
+        },
+        {
+            id: 'daifugo',
+            title: '大富豪',
+            achievements: () => window.getDaifugoAdminAchievements?.() || [],
+            isUnlocked: id => window.isDaifugoAchievementUnlocked?.(id) || false,
+            grant: id => window.grantDaifugoAdminAchievement?.(id) || false
+        },
+        {
+            id: 'shared',
+            title: '全ゲーム共通の隠し実績',
+            achievements: () => sharedHiddenAchievementDefinitions,
+            isUnlocked: id => sharedHiddenAchievements.has(id),
+            grant: id => sharedHiddenAchievementDefinitions.some(item => item.id === id)
+                && unlockSharedHiddenAchievement(id)
+        }
+    ];
+
+    function isAnyAdminModeEnabled() {
+        return adminModeEnabled || pokerAdminModeEnabled || blackjackAdminModeEnabled
+            || Boolean(window.isDaifugoAdminModeEnabled?.());
+    }
+
+    function renderAdminAchievementOptions() {
+        const gameSelect = document.getElementById('admin-achievement-game');
+        const achievementSelect = document.getElementById('admin-achievement-choice');
+        const currentId = achievementSelect.value;
+        const game = adminAchievementGames.find(item => item.id === gameSelect.value);
+        achievementSelect.replaceChildren();
+        (game?.achievements() || []).forEach(achievement => {
+            const option = document.createElement('option');
+            option.value = achievement.id;
+            option.textContent = `${game.isUnlocked(achievement.id) ? '獲得済み' : '未獲得'}: ${achievement.title}`;
+            achievementSelect.append(option);
+        });
+        if ([...achievementSelect.options].some(option => option.value === currentId)) {
+            achievementSelect.value = currentId;
+        }
+        updateAdminAchievementButton();
+    }
+
+    function updateAdminAchievementButton() {
+        const game = adminAchievementGames.find(item =>
+            item.id === document.getElementById('admin-achievement-game').value);
+        const id = document.getElementById('admin-achievement-choice').value;
+        document.getElementById('admin-achievement-grant').disabled =
+            !isAnyAdminModeEnabled() || !game || !id || game.isUnlocked(id);
+    }
+
+    function openAdminAchievementDialog(preferredGameId = '') {
+        const dialog = document.getElementById('admin-achievement-dialog');
+        if (!isAnyAdminModeEnabled()) {
+            document.getElementById('admin-achievement-status').textContent =
+                'いずれかのゲームで管理者認証してください。';
+            dialog.showModal();
+            return;
+        }
+        const gameSelect = document.getElementById('admin-achievement-game');
+        const currentGameId = adminAchievementGames.some(game => game.id === preferredGameId)
+            ? preferredGameId : gameSelect.value;
+        gameSelect.replaceChildren();
+        adminAchievementGames.forEach(game => {
+            const option = document.createElement('option');
+            option.value = game.id;
+            option.textContent = game.title;
+            gameSelect.append(option);
+        });
+        if (adminAchievementGames.some(game => game.id === currentGameId)) {
+            gameSelect.value = currentGameId;
+        }
+        renderAdminAchievementOptions();
+        document.getElementById('admin-achievement-status').textContent = '';
+        dialog.showModal();
+    }
+
+    function grantAdminAchievement() {
+        if (!isAnyAdminModeEnabled()) {
+            document.getElementById('admin-achievement-status').textContent =
+                'いずれかのゲームで管理者認証してください。';
+            updateAdminAchievementButton();
+            return;
+        }
+        const game = adminAchievementGames.find(item =>
+            item.id === document.getElementById('admin-achievement-game').value);
+        const id = document.getElementById('admin-achievement-choice').value;
+        const achievement = game?.achievements().find(item => item.id === id);
+        if (!game || !achievement || game.isUnlocked(id)) {
+            document.getElementById('admin-achievement-status').textContent =
+                '未獲得の実績を選択してください。';
+            updateAdminAchievementButton();
+            return;
+        }
+        if (!game.grant(id)) {
+            document.getElementById('admin-achievement-status').textContent =
+                '実績を獲得できませんでした。画面を再読み込みして再度お試しください。';
+            return;
+        }
+        document.getElementById('admin-achievement-status').textContent =
+            `実績「${achievement.title}」を獲得しました。`;
+        renderAdminAchievementOptions();
+    }
+
+    window.openAdminAchievementDialog = openAdminAchievementDialog;
+    window.renderAdminAchievementOptions = renderAdminAchievementOptions;
+    window.grantAdminAchievement = grantAdminAchievement;
+
     function getLocalDateKey() {
         const now = new Date();
         return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
@@ -2469,6 +2641,17 @@
     }
 
     window.recordCardGameVictory = recordSharedGameVictory;
+    window.setSharedGameVictoryCount = (game, count) => {
+        if (!Object.hasOwn(sharedGameVictoryCounts, game)
+            || !Number.isSafeInteger(count) || count < 0) {
+            throw new Error('勝利数は0以上の整数で指定してください。');
+        }
+        sharedGameVictoryCounts[game] = count;
+        localStorage.setItem('shared-game-victory-counts-v1', JSON.stringify(sharedGameVictoryCounts));
+        renderSharedVictoryCounts();
+    };
+    window.verifyAdminAccessCode = code =>
+        String(code).trim().toUpperCase() === adminAccessCode;
     window.playCardGameSound = playSound;
 
     function toggleSound() {

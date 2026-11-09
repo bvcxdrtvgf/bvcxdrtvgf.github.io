@@ -1,5 +1,6 @@
 (() => {
     const ranks = ['3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K', 'A', '2'];
+    const eightRank = ranks.indexOf('8');
     const achievements = [
         { id: 'join', title: '君はお金持ちになれるかな？', description: 'ゲームに参加する' },
         { id: 'win-1', title: '大富豪？', description: '1勝利する（まだ始まったばっかり）' },
@@ -28,7 +29,8 @@
         name: '',
         selected: new Set(),
         animatedGameId: '',
-        cpuTimer: null
+        cpuTimer: null,
+        adminModeEnabled: false
     };
 
     function element(id) {
@@ -87,16 +89,75 @@
 
     function awardAchievement(id) {
         const unlocked = unlockedAchievements();
-        if (unlocked.includes(id)) return;
+        if (unlocked.includes(id)) return false;
         unlocked.push(id);
         localStorage.setItem('daifugo-achievements-v1', JSON.stringify(unlocked));
         renderAchievements();
         setMessage(`実績「${achievements.find(achievement => achievement.id === id).title}」を獲得しました。`);
+        return true;
     }
 
     function currentVictoryCount() {
         const counts = JSON.parse(localStorage.getItem('shared-game-victory-counts-v1') || '{}');
         return Number.isSafeInteger(counts.daifugo) && counts.daifugo >= 0 ? counts.daifugo : 0;
+    }
+
+    function toggleAdminPanel() {
+        if (state.adminModeEnabled) {
+            disableAdminMode();
+            return;
+        }
+        const login = element('admin-login');
+        login.hidden = !login.hidden;
+        if (!login.hidden) element('admin-code').focus();
+    }
+
+    function unlockAdminMode() {
+        const input = element('admin-code');
+        if (!window.verifyAdminAccessCode?.(input.value)) {
+            input.value = '';
+            input.setCustomValidity('管理コードが違います。');
+            input.reportValidity();
+            input.setCustomValidity('');
+            return;
+        }
+        input.value = '';
+        state.adminModeEnabled = true;
+        element('admin-login').hidden = true;
+        element('admin-settings').hidden = false;
+        element('admin-wins').value = String(currentVictoryCount());
+        element('admin-toggle').textContent = '管理者モード: ON';
+        setMessage('管理者モードを有効にしました。');
+    }
+
+    function setAdminWins() {
+        if (!state.adminModeEnabled) {
+            setMessage('管理者認証後に操作してください。');
+            return;
+        }
+        const input = element('admin-wins');
+        const wins = Number(input.value);
+        if (!input.value.trim() || !Number.isSafeInteger(wins) || wins < 0) {
+            setMessage('勝利数は0以上の整数で入力してください。');
+            return;
+        }
+        try {
+            window.setSharedGameVictoryCount('daifugo', wins);
+        } catch (error) {
+            setMessage(error.message || '勝利数を変更できませんでした。');
+            return;
+        }
+        awardWinMilestones();
+        renderAchievements();
+        setMessage(`大富豪の勝利数を${wins}に変更しました。`);
+    }
+
+    function disableAdminMode() {
+        state.adminModeEnabled = false;
+        element('admin-login').hidden = true;
+        element('admin-settings').hidden = true;
+        element('admin-toggle').textContent = '管理者モード';
+        setMessage('大富豪の管理者モードを終了しました。');
     }
 
     function awardWinMilestones() {
@@ -184,7 +245,7 @@
     }
 
     function illegalFinish(cards, revolution) {
-        return cards.some(card => card.rank === 7 || card.id === '0-3'
+        return cards.some(card => card.rank === eightRank || card.id === '0-3'
             || (revolution ? card.rank === 0 : card.rank === 12));
     }
 
@@ -357,7 +418,7 @@
             game.message += `（革命${game.revolution ? '！' : '解除'}）`;
         }
         game.tableRank = combination(played, game.revolution);
-        const trickWasCut = spadeThreeReturn || ids.some(id => cardById(id).rank === 7);
+        const trickWasCut = spadeThreeReturn || ids.some(id => cardById(id).rank === eightRank);
         const cutMessage = spadeThreeReturn
             ? `${player.name} のスペ3返し！場が流れました。`
             : `${player.name} の8切り！場が流れました。`;
@@ -1113,6 +1174,15 @@
 
     window.startDaifugo = startDaifugo;
     window.openDaifugoAchievements = openAchievements;
+    window.getDaifugoAdminAchievements = () => achievements;
+    window.isDaifugoAchievementUnlocked = id => unlockedAchievements().includes(id);
+    window.grantDaifugoAdminAchievement = id =>
+        achievements.some(achievement => achievement.id === id) && awardAchievement(id);
+    window.isDaifugoAdminModeEnabled = () => state.adminModeEnabled;
+    window.toggleDaifugoAdminPanel = toggleAdminPanel;
+    window.unlockDaifugoAdminMode = unlockAdminMode;
+    window.setDaifugoAdminWins = setAdminWins;
+    window.disableDaifugoAdminMode = disableAdminMode;
     window.startDaifugoCpuGame = startDaifugoCpuGame;
     window.createDaifugoRoom = createDaifugoRoom;
     window.joinDaifugoRoom = joinDaifugoRoom;
