@@ -43,6 +43,15 @@
         body.blackjack-mode .help-button {
             display: none;
         }
+        body.daifugo-mode header,
+        body.daifugo-mode #admin-panel,
+        body.daifugo-mode #shop,
+        body.daifugo-mode #game-container,
+        body.daifugo-mode .online-match,
+        body.daifugo-mode .help-button,
+        body.daifugo-mode .youtube-player {
+            display: none;
+        }
         body.poker-mode .youtube-player {
             position: fixed;
             right: 12px;
@@ -439,18 +448,46 @@
             background: rgba(0,0,0,0.22);
         }
         .daifugo-card {
-            min-width: 44px;
-            min-height: 64px;
-            padding: 6px;
+            display: inline-flex;
+            width: 58px;
+            min-width: 58px;
+            height: 82px;
+            padding: 4px;
             border: 2px solid #ddd;
             border-radius: 6px;
             background: #fff;
             color: #17202a;
             font-weight: bold;
             font-size: 16px;
+            flex-direction: column;
+            align-items: center;
+            justify-content: space-between;
+            vertical-align: middle;
         }
         .daifugo-card.red {
             color: #c62828;
+        }
+        .daifugo-card-rank {
+            align-self: flex-start;
+            font-size: 11px;
+            line-height: 1;
+        }
+        .daifugo-card-rank-bottom {
+            align-self: flex-end;
+            transform: rotate(180deg);
+        }
+        .daifugo-card-center {
+            display: grid;
+            width: 38px;
+            height: 44px;
+            place-items: center;
+            font-size: 32px;
+            line-height: 1;
+        }
+        .daifugo-card-center img {
+            max-width: 38px;
+            max-height: 44px;
+            object-fit: contain;
         }
         .daifugo-card.selected {
             transform: translateY(-10px);
@@ -1038,6 +1075,9 @@
             animation: card-victory 620ms ease-in-out both;
             animation-delay: var(--victory-delay, 0ms);
         }
+        .daifugo-card-enter {
+            animation: card-reveal 240ms ease-out both;
+        }
         @keyframes card-reveal {
             from { opacity: 0.35; transform: perspective(600px) rotateY(75deg) scale(0.96); }
             to { opacity: 1; transform: perspective(600px) rotateY(0) scale(1); }
@@ -1055,6 +1095,9 @@
             .card-reveal,
             .card-move-in,
             .card-victory {
+                animation: none !important;
+            }
+            .daifugo-card-enter {
                 animation: none !important;
             }
         }
@@ -1142,6 +1185,7 @@
     <div class="start-menu">
         <h1 id="start-screen-title">ゲームを選択</h1>
         <p>遊びたいゲームを選んでください。</p>
+        <p id="all-game-victory-counts" aria-live="polite"></p>
         <div class="game-options">
             <button class="game-option" type="button" onclick="startSolitaire()">
                 ソリティア
@@ -1157,15 +1201,21 @@
             </button>
             <button class="game-option" type="button" onclick="startDaifugo()">
                 大富豪
-                <span>CPU戦 / 4人オンライン対戦</span>
+                <span>CPU戦 / 2〜4人オンライン対戦</span>
             </button>
         </div>
     </div>
 </main>
 
 <main id="daifugo-screen" class="daifugo-screen" aria-labelledby="daifugo-title" hidden>
+    <button class="blackjack-help-button" type="button"
+        onclick="document.getElementById('daifugo-help-dialog').showModal()"
+        aria-label="大富豪のルール" title="ルール">i</button>
     <h1 id="daifugo-title">大富豪</h1>
-    <p>4人で遊ぶトランプゲームです。3♦から始まり、同じ枚数のより強い札を出すかパスします。</p>
+    <p><strong>勝利数: <span id="daifugo-win-count">0</span></strong></p>
+    <button class="game-audio-toggle" type="button" onclick="toggleSound()">効果音: ON</button>
+    <button id="daifugo-achievement-open" type="button" onclick="openDaifugoAchievements()">実績 0/10</button>
+    <p>CPU戦または2〜4人オンラインで遊べます。3♦から始まり、同じ種類・枚数のより強い役か階段を出すかパスします。</p>
     <section id="daifugo-lobby" aria-label="大富豪の対戦設定">
         <div class="daifugo-lobby">
             <label for="daifugo-player-name">名前</label>
@@ -1176,12 +1226,13 @@
             <button id="daifugo-join-room" type="button" onclick="joinDaifugoRoom()">部屋に参加</button>
             <button id="daifugo-cpu-start" type="button" onclick="startDaifugoCpuGame()">CPUと対戦</button>
         </div>
-        <p>オンラインは4人で開始します。ホストが部屋コードを共有してください。</p>
+        <p>ホストが部屋コードを共有してください。参加者が2人以上（最大4人）になると開始できます。</p>
     </section>
     <section id="daifugo-room" hidden aria-label="大富豪の対戦">
         <p id="daifugo-room-code-display"></p>
         <ul id="daifugo-players" class="daifugo-players" aria-label="プレイヤー一覧"></ul>
         <button id="daifugo-start-game" type="button" onclick="startDaifugoOnlineGame()" hidden>ゲーム開始</button>
+        <button id="daifugo-rematch" type="button" onclick="rematchDaifugoGame()" hidden>もう一度遊ぶ</button>
         <div class="daifugo-play-area">
             <p id="daifugo-trick-info"></p>
             <div id="daifugo-table-cards" class="daifugo-hand" aria-label="場のカード"></div>
@@ -1196,6 +1247,32 @@
     </section>
     <p id="daifugo-message" role="status" aria-live="polite"></p>
     <button type="button" onclick="closeDaifugo()">ゲーム選択に戻る</button>
+    <dialog id="daifugo-achievement-dialog" class="blackjack-help-dialog" aria-labelledby="daifugo-achievement-title">
+        <h2 id="daifugo-achievement-title">大富豪の実績</h2>
+        <ul id="daifugo-achievement-list"></ul>
+        <form method="dialog">
+            <button type="submit">閉じる</button>
+        </form>
+    </dialog>
+    <dialog id="daifugo-help-dialog" class="blackjack-help-dialog" aria-labelledby="daifugo-help-title">
+        <h2 id="daifugo-help-title">大富豪のルール</h2>
+        <ul>
+            <li>2〜4人で52枚を配り、3♦を持つ人から始めます。人数によって手札の枚数が変わります。</li>
+            <li>同じ数字のカードを1〜4枚、または同じマークで数字が連続する3枚以上の階段を出せます。場には同じ種類・枚数で、より強い役を出すかパスします。</li>
+            <li>数字は通常3から2へ強くなります。同じ数字ではマーク順（♦、♣、♥、♠）で比べます。</li>
+            <li>4枚組または4枚以上の階段で革命となり、数字の強さが逆になります。もう一度条件を満たすと元に戻ります。革命を起こすと実績「革命家」を獲得できます。</li>
+            <li>8を含む役が出ると8切りで場が流れ、8を出した人から次の場を始めます。</li>
+            <li>前のゲームの1位（大富豪）が次のゲームで別の人に先に上がられると、都落ちで最下位になります。「もう一度遊ぶ」で同じ部屋の対戦を続けられます。都落ちすると実績「都落ち」を獲得できます。</li>
+            <li>同じマークが続いた場合、マーク縛りが発生し、次のプレイヤーの1手だけそのマークを含めて出します。パスしても縛りは終了します。</li>
+            <li>通常時、場の単独の2には3♠を出してスペ3返しにできます。場が流れ、3♠を出した人から始めます。</li>
+            <li>通常時の2、8、3♠、革命中の3を最後に出して上がることはできません。反則上がりの札は出せず、手番が続きます。反則上がりを試みると実績「不正は許さん！」を獲得できます。</li>
+            <li>カードを出し切った順に順位が決まります。CPU戦または2〜4人オンライン対戦で遊べます。</li>
+            <li>勝利数の節目やゲーム参加でも実績を獲得できます。詳細は「実績」から確認してください。</li>
+        </ul>
+        <form method="dialog">
+            <button type="submit">閉じる</button>
+        </form>
+    </dialog>
 </main>
 
 <button id="shared-hidden-achievement-button" class="shared-hidden-achievement-button" type="button"
@@ -1221,6 +1298,8 @@
     </aside>
     <button class="poker-help-button" type="button" onclick="document.getElementById('poker-help-dialog').showModal()" aria-label="ポーカーのルールと役" title="ルールと役">i</button>
     <h1 id="poker-title">テキサスホールデム</h1>
+    <p><strong>勝利数: <span id="poker-win-count">0</span></strong></p>
+    <button class="game-audio-toggle" type="button" onclick="toggleSound()">効果音: ON</button>
     <p>オンラインは2〜9人、CPU戦は1対1です。各プレイヤー200チップ、SB 10 / BB 20で開始し、チップが0になると脱落します。オンライン対戦ではホストが接続を維持してください。</p>
     <p>ソリティアで解放・選択中のキャラカードを使用します。キャラカードの解放と切り替えはソリティアのショップで行えます。</p>
     <div id="poker-online-lobby" class="poker-lobby">
@@ -1353,6 +1432,7 @@
 <main id="blackjack-screen" class="blackjack-screen" aria-labelledby="blackjack-title" hidden>
     <button class="blackjack-help-button" type="button" onclick="document.getElementById('blackjack-help-dialog').showModal()" aria-label="ブラックジャックのルール" title="ルール">i</button>
     <h1 id="blackjack-title">ブラックジャック</h1>
+    <button class="game-audio-toggle" type="button" onclick="toggleSound()">効果音: ON</button>
     <p>21を超えないようにカードを引き、ディーラーより強い手を目指します。</p>
     <p>ソリティアのショップでキャラカードを解放・選択すると、このゲームでもカードの絵柄に反映されます。</p>
     <p><strong>勝利数: <span id="blackjack-win-count">0</span></strong></p>
@@ -2047,6 +2127,17 @@
         return `<img class="suit-large" src="${character.src.normalize('NFD')}" alt="${character.name}">`;
     }
 
+    function getDaifugoCharacterCard(rank) {
+        if (!characterMarksEnabled || !Number.isInteger(rank) || rank < 0 || rank >= 13) return null;
+        const solitaireRank = rank < 11 ? rank + 2 : rank - 11;
+        const character = characterCardSet === 2
+            ? characterCardTwoImages[solitaireRank % characterCardTwoImages.length]
+            : characterImages[solitaireRank];
+        return { ...character };
+    }
+
+    window.getDaifugoCharacterCard = getDaifugoCharacterCard;
+
     const achievementDefinitions = [
         { id: 'first-victory', title: 'First victory!', condition: '初めて勝利すると獲得', qualifies: () => totalWins >= 1 },
         { id: 'beginner', title: 'beginner Solitaire player', condition: '10回勝利し、簡単をクリアすると獲得', qualifies: () => totalWins >= 10 && hasCleared('easy') },
@@ -2337,11 +2428,55 @@
         }
     }
 
+    const sharedGameVictoryCounts = (() => {
+        const stored = JSON.parse(localStorage.getItem('shared-game-victory-counts-v1') || '{}');
+        return {
+            poker: Number.isSafeInteger(stored.poker) && stored.poker >= 0 ? stored.poker : 0,
+            daifugo: Number.isSafeInteger(stored.daifugo) && stored.daifugo >= 0 ? stored.daifugo : 0
+        };
+    })();
+
+    function renderSharedVictoryCounts() {
+        const solitaireWinCount = victoryCount;
+        const solitaireClears = totalWins;
+        const blackjackWins = blackjackWinCount;
+        const counts = {
+            poker: sharedGameVictoryCounts.poker,
+            blackjack: blackjackWins,
+            daifugo: sharedGameVictoryCounts.daifugo
+        };
+        Object.entries(counts).forEach(([game, wins]) => {
+            const count = document.getElementById(`${game}-win-count`);
+            if (count) count.textContent = String(wins);
+        });
+        const summary = document.getElementById('all-game-victory-counts');
+        if (summary) {
+            summary.textContent = `累計勝利数 — ソリティア: ${solitaireWinCount}（クリア ${solitaireClears}） / ポーカー: ${counts.poker} / ブラックジャック: ${counts.blackjack} / 大富豪: ${counts.daifugo}`;
+        }
+    }
+
+    function recordSharedGameVictory(game, resultId) {
+        if (!['poker', 'daifugo'].includes(game) || !resultId) return false;
+        const recordKey = `${game}:${resultId}`;
+        const recorded = JSON.parse(localStorage.getItem('shared-game-victory-records-v1') || '[]');
+        if (recorded.includes(recordKey)) return false;
+        sharedGameVictoryCounts[game]++;
+        localStorage.setItem('shared-game-victory-counts-v1', JSON.stringify(sharedGameVictoryCounts));
+        localStorage.setItem('shared-game-victory-records-v1',
+            JSON.stringify([...recorded.slice(-499), recordKey]));
+        renderSharedVictoryCounts();
+        return true;
+    }
+
+    window.recordCardGameVictory = recordSharedGameVictory;
+    window.playCardGameSound = playSound;
+
     function toggleSound() {
         soundEnabled = !soundEnabled;
         localStorage.setItem('solitaire-sound-enabled', String(soundEnabled));
-        const button = document.getElementById('audio-toggle');
-        if (button) button.textContent = `効果音: ${soundEnabled ? 'ON' : 'OFF'}`;
+        document.querySelectorAll('#audio-toggle, .game-audio-toggle').forEach(button => {
+            button.textContent = `効果音: ${soundEnabled ? 'ON' : 'OFF'}`;
+        });
         if (soundEnabled) {
             ensureAudioContext();
         } else if (audioContext && audioContext.state === 'running') {
@@ -2736,6 +2871,7 @@
             || Boolean(onlineMatch && !onlineMatch.started);
         updateShop();
         renderAchievements();
+        renderSharedVictoryCounts();
     }
 
     function toggleShop() {
@@ -3693,7 +3829,14 @@
     }
 
     function playVictoryAnimation() {
-        const cardElements = [...document.querySelectorAll('#game-container .card:not(.back)')];
+        const activeSelector = document.body.classList.contains('poker-mode')
+            ? '.poker-screen .card:not(.back)'
+            : document.body.classList.contains('blackjack-mode')
+                ? '.blackjack-screen .card:not(.back)'
+                : document.body.classList.contains('daifugo-mode')
+                    ? '#daifugo-screen .daifugo-card'
+                    : '#game-container .card:not(.back)';
+        const cardElements = [...document.querySelectorAll(activeSelector)];
         cardElements.forEach((cardElement, index) => {
             cardElement.style.setProperty('--victory-delay', `${Math.min(index, 18) * 30}ms`);
             cardElement.classList.add('card-victory');
@@ -3705,6 +3848,8 @@
             });
         }, 1500);
     }
+
+    window.playCardGameVictoryAnimation = playVictoryAnimation;
 
     function handleDrop(destType, destIndex) {
         if (modeFailed || draggedCards.length === 0) return;
@@ -3917,6 +4062,10 @@
     if (audioToggleButton) {
         audioToggleButton.textContent = `効果音: ${soundEnabled ? 'ON' : 'OFF'}`;
     }
+    document.querySelectorAll('.game-audio-toggle').forEach(button => {
+        button.textContent = `効果音: ${soundEnabled ? 'ON' : 'OFF'}`;
+    });
+    renderSharedVictoryCounts();
 
     function setGameContentInert(inert) {
         [...document.body.children].forEach(element => {
@@ -4068,6 +4217,7 @@
         blackjackWinCount = wins;
         localStorage.setItem('blackjack-win-count', String(blackjackWinCount));
         document.getElementById('blackjack-win-count').textContent = blackjackWinCount;
+        renderSharedVictoryCounts();
         if (!isOnline) {
             blackjackVaultBalance = vault;
             blackjackBankroll = chips;
@@ -4095,6 +4245,7 @@
         localStorage.setItem('blackjack-win-count', String(blackjackWinCount));
         document.getElementById('blackjack-win-count').textContent = blackjackWinCount;
         unlockQualifiedBlackjackAchievements();
+        renderSharedVictoryCounts();
     }
 
     function unlockBlackjackAchievement(id) {
@@ -4246,6 +4397,7 @@
         recorded.push(roundKey);
         localStorage.setItem('blackjack-online-recorded-wins', JSON.stringify(recorded.slice(-500)));
         addBlackjackVictory();
+        playSound('win');
         syncBlackjackOnlineWinCount(room);
     }
 
@@ -4282,9 +4434,10 @@
         playerCards.replaceChildren();
         blackjackDealerHand.forEach((card, index) => {
             const hidden = blackjackPhase === 'playing' && index === 1;
-            dealerCards.append(createCardDOM({ ...card, faceUp: !hidden }));
+            dealerCards.append(createCardDOM({ ...card, faceUp: !hidden }, undefined, false, 'card-reveal'));
         });
-        blackjackPlayerHand.forEach(card => playerCards.append(createCardDOM(card)));
+        blackjackPlayerHand.forEach(card =>
+            playerCards.append(createCardDOM(card, undefined, false, 'card-reveal')));
 
         const visibleDealerHand = blackjackPhase === 'playing'
             ? blackjackDealerHand.slice(0, 1)
@@ -4449,6 +4602,7 @@
         saveBlackjackBankroll();
         document.getElementById('blackjack-status').textContent = message;
         renderBlackjack();
+        if (result === 'blackjack' || result === 'win') playVictoryAnimation();
     }
 
     function openBlackjackOnline() {
@@ -4987,6 +5141,7 @@
             }, undefined, false);
             if (!result.committed) throw new Error('操作を反映できません。現在のラウンド状態を確認してください。');
             room.public = result.snapshot.val();
+            playSound(action === 'hit' ? 'draw' : 'move');
             renderBlackjackOnlineRoom(room);
         } catch (error) {
             console.error('ブラックジャックの操作を反映できませんでした。', error);
@@ -5241,6 +5396,10 @@
         const data = room.public;
         if (!data) return;
         const game = data.game || {};
+        if (game.round && room.lastAnimatedRound !== game.round) {
+            room.lastAnimatedRound = game.round;
+            playSound('draw');
+        }
         const order = data.playerOrder || [];
         const ownPlayer = data.players?.[room.uid];
         const playersList = document.getElementById('blackjack-online-players');
@@ -5272,7 +5431,7 @@
             cards.className = 'blackjack-cards';
             (player.hand || []).forEach(cardData => {
                 const card = deserializeBlackjackOnlineCard(cardData);
-                if (card) cards.append(createCardDOM(card));
+                if (card) cards.append(createCardDOM(card, undefined, false, 'card-reveal'));
             });
             item.append(title, details, cards);
             playersList.append(item);
@@ -5282,7 +5441,8 @@
         (game.dealerHand || []).forEach((cardData, index) => {
             const card = deserializeBlackjackOnlineCard(cardData);
             if (card) dealer.append(createCardDOM({ ...card,
-                faceUp: !(['playing', 'betting'].includes(game.phase) && index === 1) }));
+                faceUp: !(['playing', 'betting'].includes(game.phase) && index === 1) },
+            undefined, false, 'card-reveal'));
         });
         const dealerCards = (game.dealerHand || []).map(deserializeBlackjackOnlineCard).filter(Boolean);
         document.getElementById('blackjack-online-dealer-total').textContent =
@@ -5313,6 +5473,12 @@
         setBlackjackOnlineStatus(data.status === 'waiting'
             ? `参加者 ${order.length}/9人。ホストがトーナメントを開始します。`
             : `${game.round || 1}ラウンド · ${game.message || ''}`);
+        if (ownPlayer?.result?.includes('勝利')
+            && ['result', 'finished'].includes(game.phase)
+            && room.lastAnimatedVictoryRound !== game.round) {
+            room.lastAnimatedVictoryRound = game.round;
+            playVictoryAnimation();
+        }
     }
 
     function startSolitaire() {
@@ -6378,6 +6544,20 @@
         const playerElement = document.getElementById('poker-players');
         playerElement.replaceChildren();
         const game = data.game;
+        let animatePokerWin = false;
+        if (game?.handId && room.lastSoundedHandId !== game.handId) {
+            room.lastSoundedHandId = game.handId;
+            playSound('draw');
+        }
+        if (game?.handId && game.winners?.includes(room.uid)
+            && ['between-hands', 'finished'].includes(game.phase)) {
+            if (room.lastAnimatedWinHandId !== game.handId) {
+                room.lastAnimatedWinHandId = game.handId;
+                playSound('win');
+                animatePokerWin = true;
+            }
+            if (!room.winsFixed) recordSharedGameVictory('poker', game.handId);
+        }
         const order = data.playerOrder || Object.keys(data.players || {});
         const roster = document.getElementById('poker-online-roster');
         const rosterList = document.getElementById('poker-online-roster-list');
@@ -6413,12 +6593,12 @@
         boardElement.replaceChildren();
         (game?.board || []).forEach(card => {
             const decoded = deserializePokerCard(card);
-            if (decoded) boardElement.append(createCardDOM(decoded));
+            if (decoded) boardElement.append(createCardDOM(decoded, undefined, false, 'card-reveal'));
         });
         const handElement = document.getElementById('poker-player-hand');
         handElement.replaceChildren();
         (room.holeCards || []).forEach(card =>
-            handElement.append(createCardDOM({ ...card, faceUp: true })));
+            handElement.append(createCardDOM({ ...card, faceUp: true }, undefined, false, 'card-reveal')));
         document.getElementById('poker-pot').textContent = game ? `ポット: ${game.pot} チップ` : 'ポット: 0 チップ';
         const isMyTurn = game?.turnUid === room.uid;
         document.getElementById('poker-actions').hidden = !isMyTurn;
@@ -6452,6 +6632,7 @@
         } else if (game) {
             setPokerStatus(isMyTurn ? `あなたの番です（${game.phase}）。` : `${data.players?.[game.turnUid]?.name || '相手'}の番です（${game.phase}）。`);
         }
+        if (animatePokerWin) playVictoryAnimation();
     }
 
     function runLocalPokerAction(action, increment = 0, uid = localPokerRoom?.uid) {
@@ -6532,6 +6713,7 @@
             document.getElementById('poker-cpu-controls').hidden = false;
             document.getElementById('poker-cpu-start-button').textContent = 'もう一度CPUと対戦';
         }
+        playSound('move');
         renderPokerRoom(room);
         advanceLocalPokerGame();
     }
@@ -6808,6 +6990,7 @@
                 return current;
             }, undefined, false);
             if (!result.committed) throw new Error(actionError || '操作を確定できませんでした。');
+            playSound('move');
         } catch (error) {
             console.error('ポーカーの操作に失敗しました。', error);
             setPokerStatus(error.message || '操作に失敗しました。');

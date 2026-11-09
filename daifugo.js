@@ -1,5 +1,17 @@
 (() => {
     const ranks = ['3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K', 'A', '2'];
+    const achievements = [
+        { id: 'join', title: '君はお金持ちになれるかな？', description: 'ゲームに参加する' },
+        { id: 'win-1', title: '大富豪？', description: '1勝利する（まだ始まったばっかり）' },
+        { id: 'win-5', title: '小金持ち', description: '5勝利する' },
+        { id: 'win-10', title: 'お金持ち', description: '10勝利する' },
+        { id: 'win-50', title: '大金持ち', description: '50勝利する' },
+        { id: 'win-100', title: '大富豪！！', description: '100勝利する' },
+        { id: 'win-5000', title: '銀行強盗2', description: '5,000勝利する（ん、私じゃない）' },
+        { id: 'revolution', title: '革命家', description: '革命を起こす' },
+        { id: 'toshiotoshi', title: '都落ち', description: '都落ちする（かつての栄光は消え去った）' },
+        { id: 'illegal-finish', title: '不正は許さん！', description: '反則上がりを試みる' }
+    ];
     const suits = [
         { id: 'D', symbol: '♦', red: true },
         { id: 'C', symbol: '♣', red: false },
@@ -15,6 +27,7 @@
         uid: '',
         name: '',
         selected: new Set(),
+        animatedGameId: '',
         cpuTimer: null
     };
 
@@ -47,6 +60,51 @@
 
     function setMessage(message) {
         element('message').textContent = message;
+    }
+
+    function unlockedAchievements() {
+        return JSON.parse(localStorage.getItem('daifugo-achievements-v1') || '[]')
+            .filter(id => achievements.some(achievement => achievement.id === id));
+    }
+
+    function renderAchievements() {
+        const unlocked = unlockedAchievements();
+        element('achievement-open').textContent = `実績 ${unlocked.length}/${achievements.length}`;
+        element('win-count').textContent = String(currentVictoryCount());
+        const list = element('achievement-list');
+        list.replaceChildren();
+        achievements.forEach(achievement => {
+            const item = document.createElement('li');
+            item.textContent = `${achievement.title} — ${unlocked.includes(achievement.id) ? '獲得済み' : '未獲得'}：${achievement.description}`;
+            list.append(item);
+        });
+    }
+
+    function openAchievements() {
+        renderAchievements();
+        element('achievement-dialog').showModal();
+    }
+
+    function awardAchievement(id) {
+        const unlocked = unlockedAchievements();
+        if (unlocked.includes(id)) return;
+        unlocked.push(id);
+        localStorage.setItem('daifugo-achievements-v1', JSON.stringify(unlocked));
+        renderAchievements();
+        setMessage(`実績「${achievements.find(achievement => achievement.id === id).title}」を獲得しました。`);
+    }
+
+    function currentVictoryCount() {
+        const counts = JSON.parse(localStorage.getItem('shared-game-victory-counts-v1') || '{}');
+        return Number.isSafeInteger(counts.daifugo) && counts.daifugo >= 0 ? counts.daifugo : 0;
+    }
+
+    function awardWinMilestones() {
+        const wins = currentVictoryCount();
+        [1, 5, 10, 50, 100, 5000]
+            .filter(target => wins >= target)
+            .forEach(target => awardAchievement(`win-${target}`));
+        element('win-count').textContent = String(wins);
     }
 
     function setBusy(busy) {
@@ -85,24 +143,85 @@
         return `${ranks[card.rank]}${suits[card.suit].symbol}`;
     }
 
-    function combination(cards) {
-        if (!Array.isArray(cards) || cards.length < 1 || cards.length > 4) return null;
+    function combination(cards, revolution = false) {
+        if (!Array.isArray(cards) || cards.length < 1 || cards.length > 13) return null;
         const parsed = cards.map(card => typeof card === 'string' ? cardById(card) : card);
         if (parsed.some(card => !card)) return null;
-        if (!parsed.every(card => card.rank === parsed[0].rank)) return null;
+        const count = parsed.length;
+        if (parsed.every(card => card.rank === parsed[0].rank)) {
+            if (count > 4) return null;
+            return {
+                type: 'set',
+                count,
+                rank: parsed[0].rank,
+                suit: Math.max(...parsed.map(card => card.suit))
+            };
+        }
+        if (count < 3 || new Set(parsed.map(card => card.suit)).size !== 1) return null;
+        const sortedRanks = parsed.map(card => card.rank).sort((a, b) => a - b);
+        if (new Set(sortedRanks).size !== count
+            || sortedRanks[count - 1] - sortedRanks[0] !== count - 1) return null;
         return {
-            count: parsed.length,
-            rank: parsed[0].rank,
-            suit: Math.max(...parsed.map(card => card.suit))
+            type: 'stair',
+            count,
+            rank: revolution ? sortedRanks[0] : sortedRanks[count - 1],
+            suit: parsed[0].suit
         };
     }
 
     function beats(next, previous, revolution) {
-        if (!previous || next.count !== previous.count) return false;
+        if (!previous || next.count !== previous.count || next.type !== previous.type) return false;
         if (next.rank !== previous.rank) return revolution
             ? next.rank < previous.rank
             : next.rank > previous.rank;
         return next.suit > previous.suit;
+    }
+
+    function suitsMatch(cards, requiredSuits) {
+        const selectedSuits = [...new Set(cards.map(card => card.suit))];
+        return selectedSuits.length === requiredSuits.length
+            && requiredSuits.every(suit => selectedSuits.includes(suit));
+    }
+
+    function illegalFinish(cards, revolution) {
+        return cards.some(card => card.rank === 7 || card.id === '0-3'
+            || (revolution ? card.rank === 0 : card.rank === 12));
+    }
+
+    function canPass(room, uid, hand) {
+        return Boolean(room.game.tableCount)
+            || (room.game.turnUid === uid && hand.length === 1
+                && illegalFinish(hand.map(cardById).filter(Boolean), room.game.revolution));
+    }
+
+    function nextAvailableRank(room) {
+        const used = new Set(Object.values(room.players)
+            .map(player => player.rank).filter(rank => Number.isInteger(rank)));
+        for (let rank = 1; rank <= room.playerOrder.length; rank++) {
+            if (!used.has(rank)) return rank;
+        }
+        return room.playerOrder.length;
+    }
+
+    function syncWinnerOrder(room) {
+        room.game.winnerOrder = room.playerOrder
+            .filter(uid => Number.isInteger(room.players[uid]?.rank))
+            .sort((a, b) => room.players[a].rank - room.players[b].rank);
+    }
+
+    function awardPlace(room, uid) {
+        const player = room.players[uid];
+        if (!player || player.rank != null) return;
+        player.rank = nextAvailableRank(room);
+        room.game.winnerOrder.push(uid);
+        const previousChampion = room.players[room.game.previousChampionUid];
+        if (player.rank === 1 && room.game.previousChampionUid
+            && room.game.previousChampionUid !== uid && previousChampion?.rank == null) {
+            previousChampion.rank = room.playerOrder.length;
+            room.game.winnerOrder.push(room.game.previousChampionUid);
+            room.game.message += `。前回の大富豪 ${previousChampion.name} は都落ちで最下位！`;
+        }
+        syncWinnerOrder(room);
     }
 
     function activePlayers(room) {
@@ -123,28 +242,33 @@
         return '';
     }
 
-    function clearTrick(room, leadUid) {
+    function clearTrick(room, leadUid, message = '場が流れました。次のプレイヤーから出せます。') {
         room.game.table = [];
         room.game.tableCount = 0;
         room.game.tableRank = null;
         room.game.passed = [];
         room.game.lastPlayUid = null;
+        room.game.suitLock = null;
         room.game.turnUid = leadUid || activePlayers(room)[0] || '';
-        room.game.message = '場が流れました。次のプレイヤーから出せます。';
+        room.game.message = message;
     }
 
     function finishIfDone(room) {
         const game = room.game;
         const active = activePlayers(room);
         if (active.length > 1) return false;
-        if (active.length === 1 && room.players[active[0]].rank == null) {
-            room.players[active[0]].rank = 4;
-            game.winnerOrder.push(active[0]);
-        }
+        if (active.length === 1 && room.players[active[0]].rank == null) awardPlace(room, active[0]);
         room.status = 'finished';
         game.turnUid = '';
+        syncWinnerOrder(room);
         game.message = `ゲーム終了。順位: ${game.winnerOrder.map((uid, index) =>
             `${index + 1}位 ${room.players[uid].name}`).join('、')}`;
+        if (game.winnerOrder.length) {
+            room.previousChampionUid = game.winnerOrder[0];
+            if (state.mode === 'cpu') {
+                localStorage.setItem('daifugo-previous-champion', game.winnerOrder[0]);
+            }
+        }
         return true;
     }
 
@@ -177,7 +301,9 @@
             throw new Error('あなたの番ではありません。');
         }
         if (action.type === 'pass') {
-            if (!game.tableCount) throw new Error('場にカードがないときはパスできません。');
+            const currentHand = Array.isArray(player.hand) ? player.hand : action.hand || [];
+            if (!canPass(room, uid, currentHand)) throw new Error('場にカードがないときはパスできません。');
+            game.suitLock = null;
             if (!game.passed.includes(uid)) game.passed.push(uid);
             player.lastAction = 'パス';
             advanceAfterAction(room, uid);
@@ -189,15 +315,31 @@
         const hand = new Set(currentHand || []);
         if (!ids.length || ids.some(id => !hand.has(id))) throw new Error('選択したカードが手札にありません。');
         const played = ids.map(cardById).filter(Boolean);
-        const nextCombo = combination(played);
-        if (!nextCombo) throw new Error('同じ数字のカードを1〜4枚選んでください。');
-        if (game.tableCount && !beats(nextCombo, game.tableRank, game.revolution)) {
+        const nextCombo = combination(played, game.revolution);
+        if (!nextCombo) throw new Error('同じ数字の1〜4枚か、同じマークで3枚以上の階段を選んでください。');
+        const isRevolution = nextCombo.type === 'set' && nextCombo.count === 4
+            || nextCombo.type === 'stair' && nextCombo.count >= 4;
+        const revolutionAfterPlay = isRevolution ? !game.revolution : game.revolution;
+        const spadeThreeReturn = !game.revolution && game.tableCount === 1
+            && cardById(game.table[0])?.rank === 12
+            && ids.length === 1 && ids[0] === '0-3';
+        const activeSuitLock = game.suitLock?.targetUid === uid ? game.suitLock : null;
+        if (activeSuitLock && !suitsMatch(played, activeSuitLock.suits)) {
+            throw new Error('マーク縛り中です。次の1手は同じマークを含めてください。');
+        }
+        if (game.tableCount && !spadeThreeReturn && !beats(nextCombo, game.tableRank, game.revolution)) {
             throw new Error('場のカードと同じ枚数で、より強いカードを出してください。');
         }
         if (game.firstPlay && !ids.includes('0-0')) {
             throw new Error('最初の手番は3♦を含めて出してください。');
         }
-        game.firstPlay = false;
+        const remainingHand = currentHand.filter(id => !ids.includes(id));
+        if (!remainingHand.length && illegalFinish(played, revolutionAfterPlay)) {
+            throw new Error('反則上がりです。2・8・3♠（革命中は3）では上がれません。');
+        }
+        if (game.firstPlay) game.firstPlay = false;
+        const previousTable = game.table.map(cardById).filter(Boolean);
+        game.suitLock = null;
         if (Array.isArray(player.hand)) {
             player.hand = player.hand.filter(id => !ids.includes(id));
             player.handCount = player.hand.length;
@@ -207,19 +349,42 @@
         player.lastAction = `${ids.map(id => cardLabel(cardById(id))).join(' ')} を出した`;
         game.table = ids;
         game.tableCount = ids.length;
-        game.tableRank = nextCombo;
         game.lastPlayUid = uid;
         game.passed = game.passed.filter(passedUid => passedUid !== uid);
         game.message = `${player.name} が ${player.lastAction}`;
-        if (ids.length === 4) {
+        if (isRevolution) {
             game.revolution = !game.revolution;
             game.message += `（革命${game.revolution ? '！' : '解除'}）`;
         }
+        game.tableRank = combination(played, game.revolution);
+        const trickWasCut = spadeThreeReturn || ids.some(id => cardById(id).rank === 7);
+        const cutMessage = spadeThreeReturn
+            ? `${player.name} のスペ3返し！場が流れました。`
+            : `${player.name} の8切り！場が流れました。`;
+        let nextLockSuits = [];
+        if (!trickWasCut && !activeSuitLock && previousTable.length) {
+            const previousSuits = [...new Set(previousTable.map(card => card.suit))];
+            const playedSuits = [...new Set(played.map(card => card.suit))];
+            if (previousSuits.length === playedSuits.length
+                && previousSuits.every(suit => playedSuits.includes(suit))) {
+                nextLockSuits = playedSuits;
+            }
+        }
         const remainingCards = Array.isArray(player.hand) ? player.hand.length : player.handCount;
         if (remainingCards === 0) {
-            player.rank = game.winnerOrder.length + 1;
-            game.winnerOrder.push(uid);
+            awardPlace(room, uid);
             game.message += `。${player.rank}位で上がり！`;
+        }
+        if (trickWasCut) {
+            const nextLeadUid = player.rank == null ? uid : nextActive(room, uid);
+            clearTrick(room, nextLeadUid, cutMessage);
+            finishIfDone(room);
+            return room;
+        }
+        const targetUid = nextActive(room, uid, true);
+        if (nextLockSuits.length && targetUid && !trickWasCut) {
+            game.suitLock = { suits: nextLockSuits, targetUid };
+            game.message += `（次の1手は${nextLockSuits.map(suit => suits[suit].symbol).join('・')}縛り）`;
         }
         advanceAfterAction(room, uid);
         return room;
@@ -228,9 +393,9 @@
     function makeStartedRoom(room, deck) {
         const next = JSON.parse(JSON.stringify(room));
         const players = next.playerOrder.map(uid => next.players[uid]);
-        if (next.status !== 'waiting' || players.length !== 4
+        if (next.status !== 'waiting' || players.length < 2 || players.length > 4
             || players.some(player => player.connected === false)) {
-            throw new Error('接続中のプレイヤーが4人そろってから開始してください。');
+            throw new Error('接続中のプレイヤーが2〜4人必要です。');
         }
         players.forEach(player => {
             player.hand = [];
@@ -242,6 +407,7 @@
         const firstPlayer = players.find(player => player.hand.includes('0-0'));
         next.status = 'playing';
         next.game = {
+            gameId: `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`,
             turnUid: firstPlayer.uid,
             table: [],
             tableCount: 0,
@@ -250,6 +416,8 @@
             passed: [],
             revolution: false,
             firstPlay: true,
+            previousChampionUid: next.previousChampionUid || null,
+            suitLock: null,
             winnerOrder: [],
             message: '3♦を持つプレイヤーから開始します。'
         };
@@ -277,13 +445,25 @@
         });
         const startButton = element('start-game');
         startButton.hidden = !code || room.hostUid !== uid || room.status !== 'waiting';
-        startButton.disabled = (room.playerOrder || []).length !== 4
-            || (room.playerOrder || []).some(playerUid => room.players[playerUid]?.connected === false);
+        const connectedCount = (room.playerOrder || []).filter(playerUid =>
+            room.players[playerUid]?.connected !== false).length;
+        startButton.disabled = connectedCount < 2 || connectedCount > 4;
+        const rematchButton = element('rematch');
+        rematchButton.hidden = room.status !== 'finished'
+            || (state.mode === 'online' && room.hostUid !== uid);
         const game = room.game;
+        const animateDealtHand = Boolean(game?.gameId && state.animatedGameId !== game.gameId);
+        if (animateDealtHand) {
+            state.animatedGameId = game.gameId;
+            window.playCardGameSound?.('draw');
+        }
         const table = element('table-cards');
         table.replaceChildren();
-        (game?.table || []).map(cardById).filter(Boolean).forEach(card =>
-            table.append(createCardElement(card, true)));
+        (game?.table || []).map(cardById).filter(Boolean).forEach(card => {
+            const cardElement = createCardElement(card, true);
+            cardElement.classList.add('daifugo-card-enter');
+            table.append(cardElement);
+        });
         const byPlayer = room.players?.[uid];
         const hand = element('own-hand');
         hand.replaceChildren();
@@ -291,8 +471,10 @@
         visibleHand.map(cardById).filter(Boolean).forEach(card => {
             const button = document.createElement('button');
             button.className = 'daifugo-card';
+            if (animateDealtHand) button.classList.add('daifugo-card-enter');
             if (suits[card.suit].red) button.classList.add('red');
-            button.textContent = cardLabel(card);
+            button.setAttribute('aria-label', cardLabel(card));
+            appendCardFace(button, card);
             button.disabled = room.status !== 'playing' || game.turnUid !== uid;
             if (state.selected.has(card.id)) button.classList.add('selected');
             button.setAttribute('aria-pressed', String(state.selected.has(card.id)));
@@ -305,11 +487,11 @@
         });
         const isMyTurn = room.status === 'playing' && game.turnUid === uid;
         element('play').disabled = !isMyTurn || state.selected.size === 0;
-        element('pass').disabled = !isMyTurn || !game.tableCount;
+        element('pass').disabled = !isMyTurn || !canPass(room, uid, visibleHand);
         element('trick-info').textContent = game
-            ? `場: ${game.tableCount ? `${game.tableCount}枚出し` : 'なし'} · 革命: ${game.revolution ? 'ON' : 'OFF'}`
-            : 'ホストが4人そろったらゲームを開始します。';
-        element('status').textContent = game?.message || '4人で開始を待っています。';
+            ? `場: ${game.tableCount ? `${game.tableCount}枚${game.tableRank?.type === 'stair' ? '階段' : '出し'}` : 'なし'} · 革命: ${game.revolution ? 'ON' : 'OFF'}${game.suitLock ? ` · 次の1手は${game.suitLock.suits.map(suit => suits[suit].symbol).join('・')}縛り` : ''}`
+            : '参加者が2人以上（最大4人）になると開始できます。';
+        element('status').textContent = game?.message || '2人以上で開始できます（最大4人）。';
         element('message').textContent = room.status === 'finished' ? game.message : '';
     }
 
@@ -317,8 +499,37 @@
         const cardElement = document.createElement('span');
         cardElement.className = 'daifugo-card';
         if (suits[card.suit].red) cardElement.classList.add('red');
-        cardElement.textContent = faceUp ? cardLabel(card) : '🂠';
+        if (faceUp) {
+            appendCardFace(cardElement, card);
+            cardElement.setAttribute('aria-label', cardLabel(card));
+        } else {
+            cardElement.textContent = '🂠';
+        }
         return cardElement;
+    }
+
+    function appendCardFace(cardElement, card) {
+        const label = cardLabel(card);
+        const top = document.createElement('span');
+        top.className = 'daifugo-card-rank';
+        top.textContent = label;
+
+        const center = document.createElement('span');
+        center.className = 'daifugo-card-center';
+        const character = window.getDaifugoCharacterCard?.(card.rank);
+        if (character) {
+            const image = document.createElement('img');
+            image.src = character.src.normalize('NFD');
+            image.alt = character.name;
+            center.append(image);
+        } else {
+            center.textContent = suits[card.suit].symbol;
+        }
+
+        const bottom = document.createElement('span');
+        bottom.className = 'daifugo-card-rank daifugo-card-rank-bottom';
+        bottom.textContent = label;
+        cardElement.append(top, center, bottom);
     }
 
     function renderCurrent() {
@@ -326,6 +537,28 @@
             render(state.room, 'human', '');
         } else if (state.room?.public) {
             render(state.room.public, state.uid, state.room.code);
+        }
+        const room = state.mode === 'online' ? state.room?.public : state.room;
+        if (room?.players?.[state.uid]?.rank === room?.playerOrder?.length
+            && room.game?.previousChampionUid === state.uid
+            && room.game.winnerOrder?.[0] !== state.uid) {
+            awardAchievement('toshiotoshi');
+        }
+        if (room?.status === 'finished' && room.players?.[state.uid]?.rank === 1
+            && window.recordCardGameVictory?.('daifugo', room.game?.gameId)) {
+            awardWinMilestones();
+            window.playCardGameSound?.('win');
+            window.playCardGameVictoryAnimation?.();
+        }
+    }
+
+    function awardSuccessfulPlayAchievements(previousRevolution, room) {
+        if (previousRevolution !== room.game.revolution) awardAchievement('revolution');
+    }
+
+    function awardIllegalFinishAttempt(error) {
+        if (error?.message?.startsWith('反則上がりです。')) {
+            awardAchievement('illegal-finish');
         }
     }
 
@@ -340,6 +573,8 @@
 
     function startDaifugo() {
         beginScreen();
+        document.body.classList.remove('poker-mode', 'blackjack-mode');
+        document.body.classList.add('daifugo-mode');
         element('lobby').hidden = false;
         element('room').hidden = true;
         setMessage('');
@@ -361,14 +596,57 @@
             hostUid: 'human',
             players,
             playerOrder: ['human', 'cpu1', 'cpu2', 'cpu3'],
+            previousChampionUid: localStorage.getItem('daifugo-previous-champion') || null,
             game: null
         }, shuffle(makeDeck()));
         room.isHost = false;
         state.room = room;
         state.mode = 'cpu';
         state.hand = [];
+        awardAchievement('join');
         renderCurrent();
         runCpuTurn();
+    }
+
+    function candidatePlays(hand) {
+        const plays = [];
+        function addSubsets(cards, count, start = 0, selected = []) {
+            if (selected.length === count) {
+                plays.push([...selected]);
+                return;
+            }
+            for (let index = start; index <= cards.length - (count - selected.length); index++) {
+                selected.push(cards[index]);
+                addSubsets(cards, count, index + 1, selected);
+                selected.pop();
+            }
+        }
+
+        const byRank = new Map();
+        const bySuit = Array.from({ length: suits.length }, () => new Map());
+        hand.forEach(card => {
+            if (!byRank.has(card.rank)) byRank.set(card.rank, []);
+            byRank.get(card.rank).push(card);
+            bySuit[card.suit].set(card.rank, card);
+        });
+        byRank.forEach(cards => {
+            for (let count = 1; count <= Math.min(cards.length, 4); count++) {
+                addSubsets(cards, count);
+            }
+        });
+        bySuit.forEach((cards, suit) => {
+            for (let start = 0; start < ranks.length - 2; start++) {
+                for (let end = start + 2; end < ranks.length; end++) {
+                    const stair = [];
+                    for (let rank = start; rank <= end; rank++) {
+                        if (!cards.has(rank)) break;
+                        stair.push(cards.get(rank));
+                    }
+                    if (stair.length === end - start + 1) plays.push(stair);
+                }
+            }
+        });
+        return plays;
     }
 
     function runCpuTurn() {
@@ -380,32 +658,39 @@
         state.cpuTimer = setTimeout(() => {
             try {
                 const cpuHand = room.players[uid].hand.map(cardById).filter(Boolean);
-                const count = room.game.tableCount || 1;
-                const grouped = new Map();
-                cpuHand.forEach(card => {
-                    if (!grouped.has(card.rank)) grouped.set(card.rank, []);
-                    grouped.get(card.rank).push(card);
-                });
-                const options = [...grouped.values()]
-                    .filter(group => group.length >= count)
-                    .map(group => group.slice(0, count))
+                const options = candidatePlays(cpuHand)
                     .filter(cards => {
-                        const combo = combination(cards);
-                        return combo && (!room.game.tableCount || beats(combo, room.game.tableRank, room.game.revolution))
-                            && (room.game.tableCount || room.game.winnerOrder.length
-                                || cards.some(card => card.id === '0-0'));
+                        const combo = combination(cards, room.game.revolution);
+                        const spadeThreeReturn = !room.game.revolution && room.game.tableCount === 1
+                            && cardById(room.game.table[0])?.rank === 12
+                            && cards.length === 1 && cards[0].id === '0-3';
+                        const revolutionAfterPlay = combo && (
+                            combo.type === 'set' && combo.count === 4
+                            || combo.type === 'stair' && combo.count >= 4
+                        ) ? !room.game.revolution : room.game.revolution;
+                        const lock = room.game.suitLock?.targetUid === uid ? room.game.suitLock : null;
+                        return combo
+                            && (!room.game.tableCount || spadeThreeReturn
+                                || beats(combo, room.game.tableRank, room.game.revolution))
+                            && (!room.game.firstPlay || cards.some(card => card.id === '0-0'))
+                            && (!lock || suitsMatch(cards, lock.suits))
+                            && !(cards.length === cpuHand.length && illegalFinish(cards, revolutionAfterPlay));
                     })
-                    .sort((a, b) => compareCards(a[0], b[0]));
+                    .sort((a, b) => {
+                        const first = combination(a, room.game.revolution);
+                        const second = combination(b, room.game.revolution);
+                        return first.count - second.count
+                            || (room.game.revolution ? second.rank - first.rank : first.rank - second.rank)
+                            || first.suit - second.suit;
+                    });
                 if (options.length) {
                     room = applyAction(room, uid, { type: 'play', cards: options[0].map(card => card.id) });
-                } else if (room.game.tableCount) {
-                    room = applyAction(room, uid, { type: 'pass' });
                 } else {
-                    const lowestCard = cpuHand[0];
-                    room = applyAction(room, uid, { type: 'play', cards: [lowestCard.id] });
+                    room = applyAction(room, uid, { type: 'pass' });
                 }
                 state.room = room;
                 state.selected.clear();
+                window.playCardGameSound?.('move');
                 renderCurrent();
                 runCpuTurn();
             } catch (error) {
@@ -435,6 +720,7 @@
                         [user.uid]: { uid: user.uid, name, connected: true, handCount: 0, rank: null }
                     },
                     playerOrder: [user.uid],
+                    previousChampionUid: null,
                     game: null
                 };
                 publicRef = roomRef.child('public');
@@ -461,9 +747,10 @@
                 public: null
             };
             attachRoomListener();
+            awardAchievement('join');
             publicRef.child(`players/${user.uid}`).onDisconnect().update({ connected: false })
                 .catch(error => console.error('大富豪の切断状態を登録できませんでした。', error));
-            setMessage('部屋を作成しました。4人そろったらゲームを開始できます。');
+            setMessage('部屋を作成しました。2人以上で開始できます（最大4人）。');
         } catch (error) {
             console.error('大富豪の部屋を作成できませんでした。', error);
             setMessage(error.message || '部屋を作成できませんでした。');
@@ -500,13 +787,17 @@
                     failure = 'この部屋ではすでにゲームが始まっています。';
                     return;
                 }
-                const players = { ...latest.players };
-                if (!players[user.uid] && (latest.playerOrder || []).length >= 4) {
+                const activeOrder = (latest.playerOrder || []).filter(uid =>
+                    latest.players?.[uid]?.connected !== false || uid === user.uid);
+                const players = Object.fromEntries(activeOrder
+                    .filter(uid => uid !== user.uid)
+                    .map(uid => [uid, latest.players[uid]]));
+                if (!activeOrder.includes(user.uid) && activeOrder.length >= 4) {
                     failure = 'この部屋は満員です（4人まで）。';
                     return;
                 }
                 players[user.uid] = {
-                    ...(players[user.uid] || {}),
+                    ...(latest.players?.[user.uid] || {}),
                     uid: user.uid,
                     name,
                     connected: true,
@@ -516,8 +807,8 @@
                 return {
                     ...latest,
                     players,
-                    playerOrder: latest.playerOrder?.includes(user.uid)
-                        ? latest.playerOrder : [...latest.playerOrder, user.uid]
+                    playerOrder: activeOrder.includes(user.uid)
+                        ? activeOrder : [...activeOrder, user.uid]
                 };
             }, undefined, false);
             if (!result.committed) throw new Error(failure || '参加を確定できませんでした。部屋を確認してください。');
@@ -536,9 +827,10 @@
                 public: result.snapshot.val()
             };
             attachRoomListener();
+            awardAchievement('join');
             publicRef.child(`players/${user.uid}`).onDisconnect().update({ connected: false })
                 .catch(error => console.error('大富豪の切断状態を登録できませんでした。', error));
-            setMessage('部屋に参加しました。4人そろったらホストが開始します。');
+            setMessage('部屋に参加しました。2人以上でホストが開始できます（最大4人）。');
         } catch (error) {
             console.error('大富豪の部屋に参加できませんでした。', error);
             setMessage(error.message || '部屋に参加できませんでした。');
@@ -578,9 +870,10 @@
         renderCurrent();
     }
 
-    async function startDaifugoOnlineGame() {
-        const room = state.room;
-        if (state.mode !== 'online' || !room?.isHost || room.public?.status !== 'waiting') return;
+    async function startOnlineRound(room, expectedStatus, previousChampionUid) {
+        const actionButton = element(expectedStatus === 'waiting' ? 'start-game' : 'rematch');
+        if (actionButton.disabled) return;
+        actionButton.disabled = true;
         try {
             const deck = shuffle(makeDeck());
             const snapshot = await room.publicRef.once('value');
@@ -590,8 +883,8 @@
             let failure = '';
             const connected = (previouslyRead.playerOrder || []).filter(uid =>
                 previouslyRead.players?.[uid]?.connected !== false);
-            if (connected.length !== 4) {
-                throw new Error('接続中のプレイヤーが4人そろってから開始してください。');
+            if (connected.length < 2 || connected.length > 4) {
+                throw new Error('接続中のプレイヤーが2〜4人必要です。');
             }
             const hands = Object.fromEntries(connected.map(uid => [uid, []]));
             deck.forEach((card, index) => hands[connected[index % connected.length]].push(card.id));
@@ -603,7 +896,7 @@
             const result = await room.publicRef.transaction(current => {
                 const latest = current || (usePreviouslyRead ? previouslyRead : null);
                 usePreviouslyRead = false;
-                if (!latest || latest.hostUid !== room.public?.hostUid || latest.status !== 'waiting') {
+                if (!latest || latest.hostUid !== room.public?.hostUid || latest.status !== expectedStatus) {
                     failure = '部屋の状態が変わったため開始できません。';
                     return;
                 }
@@ -611,14 +904,19 @@
                     latest.players?.[uid]?.connected !== false);
                 if (latestConnected.length !== connected.length
                     || latestConnected.some((uid, index) => uid !== connected[index])) {
-                    failure = '参加者が変わりました。4人そろってから再度開始してください。';
+                    failure = '参加者が変わりました。人数を確認して再度開始してください。';
                     return;
                 }
-                if (latestConnected.length !== 4) {
-                    failure = '接続中のプレイヤーが4人そろってから開始してください。';
+                if (latestConnected.length < 2 || latestConnected.length > 4) {
+                    failure = '接続中のプレイヤーが2〜4人必要です。';
                     return;
                 }
-                const next = JSON.parse(JSON.stringify({ ...latest, playerOrder: latestConnected }));
+                const next = JSON.parse(JSON.stringify({
+                    ...latest,
+                    playerOrder: latestConnected,
+                    previousChampionUid: latestConnected.includes(previousChampionUid)
+                        ? previousChampionUid : null
+                }));
                 next.status = 'playing';
                 next.playerOrder.forEach(uid => {
                     next.players[uid].rank = null;
@@ -634,6 +932,8 @@
                     passed: [],
                     revolution: false,
                     firstPlay: true,
+                    previousChampionUid: next.previousChampionUid,
+                    suitLock: null,
                     winnerOrder: [],
                     message: '3♦を持つプレイヤーから開始します。'
                 };
@@ -645,12 +945,43 @@
         } catch (error) {
             console.error('大富豪を開始できませんでした。', error);
             setMessage(error.message || 'ゲームを開始できませんでした。');
+        } finally {
+            actionButton.disabled = false;
+            renderCurrent();
         }
+    }
+
+    async function startDaifugoOnlineGame() {
+        const room = state.room;
+        if (state.mode !== 'online' || !room?.isHost || room.public?.status !== 'waiting') return;
+        await startOnlineRound(room, 'waiting', room.public.previousChampionUid || null);
+    }
+
+    async function rematchDaifugoGame() {
+        const room = state.room;
+        if (room?.status === 'finished') {
+            const previousChampionUid = room.game.winnerOrder[0] || null;
+            const nextRoom = makeStartedRoom({
+                ...room,
+                status: 'waiting',
+                previousChampionUid
+            }, shuffle(makeDeck()));
+            nextRoom.isHost = false;
+            state.room = nextRoom;
+            state.selected.clear();
+            renderCurrent();
+            runCpuTurn();
+            return;
+        }
+        const onlineRoom = room?.public;
+        if (state.mode !== 'online' || !room?.isHost || onlineRoom?.status !== 'finished') return;
+        await startOnlineRound(room, 'finished', onlineRoom.game?.winnerOrder?.[0] || null);
     }
 
     async function submitOnlineAction(action) {
         const room = state.room;
         if (!room?.roomRef) return;
+        const previousRevolution = room.public?.game?.revolution || false;
         try {
             let failure = '';
             const result = await room.publicRef.transaction(current => {
@@ -666,11 +997,14 @@
             room.public = result.snapshot.val();
             if (action.type === 'play') {
                 state.hand = state.hand.filter(id => !action.cards.includes(id));
+                awardSuccessfulPlayAchievements(previousRevolution, room.public);
                 await room.privateRef.set(state.hand);
             }
+            window.playCardGameSound?.('move');
             state.selected.clear();
             renderCurrent();
         } catch (error) {
+            awardIllegalFinishAttempt(error);
             setMessage(error.message);
         }
     }
@@ -682,12 +1016,16 @@
             return;
         }
         if (state.mode === 'cpu') {
+            const previousRevolution = state.room.game.revolution;
             try {
                 state.room = applyAction(state.room, state.uid, { type: 'play', cards });
+                awardSuccessfulPlayAchievements(previousRevolution, state.room);
+                window.playCardGameSound?.('move');
                 state.selected.clear();
                 renderCurrent();
                 runCpuTurn();
             } catch (error) {
+                awardIllegalFinishAttempt(error);
                 setMessage(error.message);
             }
         } else {
@@ -699,6 +1037,7 @@
         if (state.mode === 'cpu') {
             try {
                 state.room = applyAction(state.room, state.uid, { type: 'pass' });
+                window.playCardGameSound?.('move');
                 state.selected.clear();
                 renderCurrent();
                 runCpuTurn();
@@ -753,8 +1092,9 @@
             state.hand = [];
             state.selected.clear();
             element('room').hidden = true;
-            element('daifugo-screen').hidden = true;
+            document.getElementById('daifugo-screen').hidden = true;
             document.getElementById('start-screen').hidden = false;
+            document.body.classList.remove('daifugo-mode');
             window.setGameContentInert?.(true);
         }
     }
@@ -765,16 +1105,19 @@
             return;
         }
         clearTimeout(state.cpuTimer);
-        element('daifugo-screen').hidden = true;
+        document.getElementById('daifugo-screen').hidden = true;
         document.getElementById('start-screen').hidden = false;
+        document.body.classList.remove('daifugo-mode');
         window.setGameContentInert?.(true);
     }
 
     window.startDaifugo = startDaifugo;
+    window.openDaifugoAchievements = openAchievements;
     window.startDaifugoCpuGame = startDaifugoCpuGame;
     window.createDaifugoRoom = createDaifugoRoom;
     window.joinDaifugoRoom = joinDaifugoRoom;
     window.startDaifugoOnlineGame = startDaifugoOnlineGame;
+    window.rematchDaifugoGame = rematchDaifugoGame;
     window.playDaifugoCards = playDaifugoCards;
     window.passDaifugoTurn = passDaifugoTurn;
     window.leaveDaifugoGame = leaveDaifugoGame;
